@@ -1,0 +1,209 @@
+/* 版面樣式沿用 card-editor-demo-v5_22.html 的深色編輯器風格，改寫成一般 class（原本是內嵌在 <style> 裡）*/
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: #1a1a1e;
+  color: #e6e6e6;
+}
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  height: 48px;
+  flex-shrink: 0;
+  background: #232328;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+.topbar .title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+.topbar .note {
+  font-size: 12px;
+  color: #888;
+}
+.layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: #202024;
+  border-right: 1px solid #2e2e33;
+  padding: 14px;
+  overflow-y: auto;
+}
+.panel.right {
+  border-right: none;
+  border-left: 1px solid #2e2e33;
+}
+.section-title {
+  font-size: 12px;
+  color: #999;
+  font-weight: 600;
+  margin: 4px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.template-card {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #17171a;
+}
+.template-card.active {
+  border-color: #4f8cff;
+}
+.template-card img {
+  width: 100%;
+  height: 50px;
+  object-fit: cover;
+  display: block;
+}
+.template-card .label {
+  font-size: 11px;
+  padding: 5px 6px;
+  color: #ccc;
+}
+textarea,
+input[type="text"] {
+  width: 100%;
+  background: #17171a;
+  border: 1px solid #333;
+  color: #eee;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 10px;
+}
+.field-label {
+  font-size: 11px;
+  color: #999;
+  margin: 8px 0 4px;
+  display: block;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #141416;
+  position: relative;
+}
+.canvas-shell {
+  background: #000;
+  box-shadow: 0 0 0 1px #333, 0 12px 40px rgba(0, 0, 0, 0.5);
+  line-height: 0;
+}
+canvas {
+  display: block;
+}
+.canvas-loading {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #999;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+.layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #17171a;
+  margin-bottom: 4px;
+  color: #ccc;
+}
+.layer-row.active {
+  background: #2a3d63;
+  color: #fff;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2a30;
+  border: 1px solid #3a3a42;
+  color: #eee;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 6px;
+  margin-bottom: 8px;
+}
+.btn:hover {
+  background: #35353c;
+}
+.btn.primary {
+  background: #2f6fed;
+  border-color: #2f6fed;
+  color: #fff;
+}
+.btn.primary:hover {
+  background: #4f8cff;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+input[type="file"] {
+  font-size: 12px;
+  color: #aaa;
+  width: 100%;
+  margin-bottom: 6px;
+}
+.hint {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+}
+.photo-positioner {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #333;
+}
+.photo-positioner-canvas {
+  background: #000;
+  display: inline-block;
+  border: 1px solid #333;
+}

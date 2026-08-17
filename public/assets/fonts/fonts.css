@@ -1,0 +1,36 @@
+/* 直接從已經跟客戶（東森圖卡團隊）核對過視覺效果的 HTML demo 抽出來的原始字型檔，
+   刻意不用系統字型或重新轉檔，確保跟 demo 逐 px 一致。*/
+@font-face {
+  font-family: 'MStiffHeiHK';
+  src: url('./MStiffHeiHK.woff') format('woff');
+  font-display: block;
+}
+@font-face {
+  font-family: 'DFLiHei';
+  src: url('./DFLiHei.woff') format('woff');
+  font-display: block;
+}
+@font-face {
+  font-family: 'DFHeiUB';
+  font-weight: 900;
+  src: url('./DFHeiUB.woff') format('woff');
+  font-display: block;
+}
+@font-face {
+  font-family: 'DFLiHeiBd';
+  font-weight: 900;
+  src: url('./DFLiHeiBd.woff') format('woff');
+  font-display: block;
+}
+@font-face {
+  font-family: 'DFLiHeiBdP';
+  font-weight: 900;
+  src: url('./DFLiHeiBdP.woff') format('woff');
+  font-display: block;
+}
+@font-face {
+  font-family: 'ArialBlackEmbed';
+  font-weight: 900;
+  src: url('./ArialBlackEmbed.woff') format('woff');
+  font-display: block;
+}
