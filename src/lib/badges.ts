@@ -16,7 +16,10 @@ export const COLORABLE_SHAPES: BadgeShape[] = [];
 
 // 規範：文字字級（上下高度）永遠固定，不會因為字數變多而縮小；
 // 字數太多、原本的安全區塞不下時，改成把「色塊底圖」整個往左右拉寬，絕對不裁切文字。
-const FIXED_FONT_SIZE = 96;
+// 字級跟下面 textBox 都是直接從你的「裝飾色塊.psd」量出來的：
+// PSD 裡示範文字「秘書誆情糾葛」（6 個字）框在寬 356 / 高 57 的範圍，用我們實際的字型
+// （DFLiHeiBdP 900）反推，59px 量出來的寬度跟 PSD 幾乎完全一致（354 vs 356）。
+const FIXED_FONT_SIZE = 59;
 
 function drawCenteredText(
   ctx: CanvasRenderingContext2D,
@@ -60,21 +63,23 @@ interface ImageBadgeConfig {
 const BASE = import.meta.env.BASE_URL;
 
 const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
-  // 01 爆炸框(橫幅款)：文字與整張底圖置中對齊（框內置中，不偏靠任一邊）
+  // 01 爆炸框(橫幅款)：PSD 裡「爆炸字01」群組跟這張圖大小完全一致（476×137），
+  // 文字框直接量 PSD 座標換算：x=64, y=37, w=356, h=57
   "burst-h": {
     assetPath: `${BASE}assets/badges/burst-h.png`,
     naturalW: 476,
     naturalH: 137,
-    textBox: { x: 74, y: 40, w: 328, h: 58 },
+    textBox: { x: 64, y: 37, w: 356, h: 57 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
   },
-  // 02 爆炸框(緞帶款)：往左 1.5 個字、往上 1 個字，再往下修回半個字元、往右修回 0.5 個字
+  // 02 爆炸框(緞帶款)：PSD 裡「爆炸字02」群組是 455×143，跟這張圖的 453×139 差一點點，
+  // 文字框座標照比例縮放過（x=84, y=25, w=354, h=55）
   "burst-ribbon": {
     assetPath: `${BASE}assets/badges/burst-ribbon.png`,
     naturalW: 453,
     naturalH: 139,
-    textBox: { x: 114, y: 21, w: 270, h: 58 },
+    textBox: { x: 84, y: 25, w: 354, h: 55 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
   },
