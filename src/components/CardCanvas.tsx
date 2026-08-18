@@ -1,10 +1,13 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from "react";
 import { useEditorStore } from "../store/editorStore";
 import { getTemplateById } from "../templates/templates";
 import { loadFonts, preloadAll, safeFrameImage } from "../templates/assets";
 
 export interface CardCanvasHandle {
   exportPNG: () => void;
+  /** 只畫出版型內容到一張 1920×1080 的離線 canvas 並回傳，不觸發下載。
+   *  用途：讓 Editor.tsx 可以再疊上 DecorationLayer 的色塊之後，一次匯出成一張圖。 */
+  renderExportCanvas: () => HTMLCanvasElement | null;
 }
 
 const PREVIEW_W = 960;
@@ -12,7 +15,11 @@ const PREVIEW_H = 540;
 const EXPORT_W = 1920;
 const EXPORT_H = 1080;
 
-const CardCanvas = forwardRef<CardCanvasHandle>((_props, ref) => {
+interface Props {
+  children?: ReactNode;
+}
+
+const CardCanvas = forwardRef<CardCanvasHandle, Props>(({ children }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -75,25 +82,33 @@ const CardCanvas = forwardRef<CardCanvasHandle>((_props, ref) => {
     }
   }, [ready, activeTemplateId, fieldValues, rawUploadedImg, positionedOverride, activeLayerIdx, showSafeFrame]);
 
+  const renderExportCanvas = (): HTMLCanvasElement | null => {
+    const tpl = getTemplateById(activeTemplateId);
+    if (!tpl) return null;
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = EXPORT_W;
+    exportCanvas.height = EXPORT_H;
+    const exportCtx = exportCanvas.getContext("2d");
+    if (!exportCtx) return null;
+    exportCtx.scale(EXPORT_W / PREVIEW_W, EXPORT_H / PREVIEW_H);
+    const builtLayers = tpl.build(fieldValues);
+    builtLayers.forEach((layer) => {
+      // 跟原本 demo 的規則一致：輸出一律透明底，跳過白底墊色與人物/情境照片窗口，
+      // 只留下真正的圖框素材、文字、icon —— 這些才是要交付去疊到畫面上的東西。
+      if (layer.isBgFill || layer.isImageSlot) return;
+      exportCtx.save();
+      layer.draw(exportCtx);
+      exportCtx.restore();
+    });
+    return exportCanvas;
+  };
+
   useImperativeHandle(ref, () => ({
+    renderExportCanvas,
     exportPNG: () => {
       const tpl = getTemplateById(activeTemplateId);
-      if (!tpl) return;
-      const exportCanvas = document.createElement("canvas");
-      exportCanvas.width = EXPORT_W;
-      exportCanvas.height = EXPORT_H;
-      const exportCtx = exportCanvas.getContext("2d");
-      if (!exportCtx) return;
-      exportCtx.scale(EXPORT_W / PREVIEW_W, EXPORT_H / PREVIEW_H);
-      const builtLayers = tpl.build(fieldValues);
-      builtLayers.forEach((layer) => {
-        // 跟原本 demo 的規則一致：輸出一律透明底，跳過白底墊色與人物/情境照片窗口，
-        // 只留下真正的圖框素材、文字、icon —— 這些才是要交付去疊到畫面上的東西。
-        if (layer.isBgFill || layer.isImageSlot) return;
-        exportCtx.save();
-        layer.draw(exportCtx);
-        exportCtx.restore();
-      });
+      const exportCanvas = renderExportCanvas();
+      if (!tpl || !exportCanvas) return;
       const a = document.createElement("a");
       a.href = exportCanvas.toDataURL("image/png");
       a.download = `${tpl.id}-${Date.now()}.png`;
@@ -105,6 +120,7 @@ const CardCanvas = forwardRef<CardCanvasHandle>((_props, ref) => {
     <div className="canvas-wrap">
       <div className="canvas-shell">
         <canvas ref={canvasRef} width={PREVIEW_W} height={PREVIEW_H} />
+        {children}
       </div>
       {!ready && <div className="canvas-loading">載入版型素材與字型中…</div>}
     </div>

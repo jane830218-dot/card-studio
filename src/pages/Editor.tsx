@@ -6,12 +6,47 @@ import PhotoUpload from "../components/PhotoUpload";
 import LayerList from "../components/LayerList";
 import SaveLoadPanel from "../components/SaveLoadPanel";
 import TicketImportPanel from "../components/TicketImportPanel";
+import DecorationLayer, { type DecorationLayerHandle } from "../components/DecorationLayer";
+import DecorationPanel from "../components/DecorationPanel";
 import { useEditorStore } from "../store/editorStore";
 
 export default function Editor() {
   const canvasRef = useRef<CardCanvasHandle>(null);
+  const decorationRef = useRef<DecorationLayerHandle>(null);
   const showSafeFrame = useEditorStore((s) => s.showSafeFrame);
   const toggleSafeFrame = useEditorStore((s) => s.toggleSafeFrame);
+
+  // 合併輸出：先畫版型本身（跟原本 exportPNG 一樣的規則：透明底，跳過白底與照片），
+  // 再把「裝飾色塊」那層 Fabric 畫布疊上去，最後合成一張圖再觸發下載。
+  const handleExport = () => {
+    const tpl = useEditorStore.getState().activeTemplateId;
+    const exportCanvas = canvasRef.current?.renderExportCanvas();
+    if (!exportCanvas) return;
+
+    const decorationCanvas = decorationRef.current?.getFabricCanvas();
+    const exportCtx = exportCanvas.getContext("2d");
+
+    const finishDownload = () => {
+      const a = document.createElement("a");
+      a.href = exportCanvas.toDataURL("image/png");
+      a.download = `${tpl}-${Date.now()}.png`;
+      a.click();
+    };
+
+    if (!decorationCanvas || !exportCtx || decorationCanvas.getObjects().length === 0) {
+      finishDownload();
+      return;
+    }
+
+    // 色塊層預覽是 960×540，輸出圖是 1920×1080，用 multiplier: 2 讓色塊也一起放大兩倍匯出
+    const decorationDataUrl = decorationCanvas.toDataURL({ format: "png", multiplier: 2, quality: 1 } as any);
+    const img = new Image();
+    img.onload = () => {
+      exportCtx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+      finishDownload();
+    };
+    img.src = decorationDataUrl;
+  };
 
   return (
     <div id="app">
@@ -21,14 +56,17 @@ export default function Editor() {
       </div>
       <div className="layout">
         <div className="panel">
-          <TicketImportPanel />
+          <TicketImportPanel decorationRef={decorationRef} />
           <TemplateGrid />
           <FieldsPanel />
           <PhotoUpload />
         </div>
-        <CardCanvas ref={canvasRef} />
+        <CardCanvas ref={canvasRef}>
+          <DecorationLayer ref={decorationRef} />
+        </CardCanvas>
         <div className="panel right">
           <LayerList />
+          <DecorationPanel decorationRef={decorationRef} />
           <div className="section-title" style={{ marginTop: 20 }}>
             檢視
           </div>
@@ -39,8 +77,8 @@ export default function Editor() {
           <div className="section-title" style={{ marginTop: 20 }}>
             輸出
           </div>
-          <button className="btn primary" onClick={() => canvasRef.current?.exportPNG()}>
-            ⬇ 下載透明底 PNG
+          <button className="btn primary" onClick={handleExport}>
+            ⬇ 下載透明底 PNG（含裝飾色塊）
           </button>
           <SaveLoadPanel />
         </div>
