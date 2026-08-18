@@ -5,6 +5,7 @@ import FieldsPanel from "../components/FieldsPanel";
 import PhotoUpload from "../components/PhotoUpload";
 import LayerList from "../components/LayerList";
 import SaveLoadPanel from "../components/SaveLoadPanel";
+import TicketImportPanel from "../components/TicketImportPanel";
 import { useEditorStore } from "../store/editorStore";
 
 export default function Editor() {
@@ -20,6 +21,7 @@ export default function Editor() {
       </div>
       <div className="layout">
         <div className="panel">
+          <TicketImportPanel />
           <TemplateGrid />
           <FieldsPanel />
           <PhotoUpload />
