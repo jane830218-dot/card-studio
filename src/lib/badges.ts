@@ -74,7 +74,7 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     assetPath: `${BASE}assets/badges/burst-ribbon.png`,
     naturalW: 453,
     naturalH: 139,
-    textBox: { x: 114, y: 32, w: 270, h: 58 },
+    textBox: { x: 114, y: 21, w: 270, h: 58 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
   },

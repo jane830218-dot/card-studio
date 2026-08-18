@@ -52,9 +52,12 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
       generateBadgeImage(shape, text).then((dataUrl) =>
         FabricImage.fromURL(dataUrl)
       ).then((img) => {
-        const targetW = 300;
-        const scale = targetW / (img.width || targetW);
-        const targetH = (img.height || 0) * scale;
+        // badges.ts 現在字太多時會把底圖「拉寬」，寬度不再固定，
+        // 所以這裡改成用固定「高度」換算縮放比例（badges.ts 保證高度永遠不變），
+        // 這樣不管底圖被拉多寬，畫布上的文字大小都維持一致，不會因為色塊變寬而縮水。
+        const targetH = 90;
+        const scale = targetH / (img.height || targetH);
+        const targetW = (img.width || 0) * scale;
         img.set({
           left: opts?.left ?? (PREVIEW_W - targetW) / 2,
           top: opts?.top ?? (PREVIEW_H - targetH) / 2,
