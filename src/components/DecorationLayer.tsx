@@ -45,11 +45,11 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     getFabricCanvas: () => fabricRef.current,
 
-    addBadge: (shape, text, color, opts) => {
+    addBadge: (shape, text, _color, opts) => {
       const fc = fabricRef.current;
       if (!fc) return;
-      // 圖片素材款要先載入 PNG 才能畫，向量款則是立刻算完，所以統一用 async 處理
-      generateBadgeImage(shape, text, color).then((dataUrl) =>
+      // 圖片素材款要先載入 PNG 才能畫（顏色已固定在圖裡，不需要傳 color），所以用 async 處理
+      generateBadgeImage(shape, text).then((dataUrl) =>
         FabricImage.fromURL(dataUrl)
       ).then((img) => {
         const targetW = 300;

@@ -184,7 +184,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
       <textarea
         rows={12}
         placeholder={
-          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n右上小標=\n(擅闖管制區)恐吃罰單\n\n色塊=\n爆炸框:不來就辭總召!\n郵票框:中元前後恐再漲"
+          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n右上小標=\n(擅闖管制區)恐吃罰單\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
         }
         value={raw}
         onChange={(e) => setRaw(e.target.value)}

@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function DecorationPanel({ decorationRef }: Props) {
-  const [shape, setShape] = useState<BadgeShape>("rounded");
+  const [shape, setShape] = useState<BadgeShape>("burst-h");
   const [text, setText] = useState("");
   const [color, setColor] = useState(BADGE_COLOR_PRESETS[0].color);
   const showColorPicker = COLORABLE_SHAPES.includes(shape);
@@ -20,7 +20,7 @@ export default function DecorationPanel({ decorationRef }: Props) {
     <div>
       <div className="section-title">裝飾色塊</div>
       <div className="hint" style={{ marginBottom: 8 }}>
-        圓角框／爆炸框／郵票框是純畫出來的，底色可以自己選；爆炸框(橫幅款)／(緞帶款)是用你提供的圖案，顏色已經固定在圖裡。生成後都可以直接在畫布上拖曳移動／拉角縮放／旋轉，位置不固定沒關係，加好之後自己調整就好。
+爆炸框(橫幅款)／(緞帶款)是用你提供的圖案，顏色已經固定在圖裡。生成後可以直接在畫布上拖曳移動／拉角縮放／旋轉，位置不固定沒關係，加好之後自己調整就好。
       </div>
 
       <div className="badge-shape-buttons">
