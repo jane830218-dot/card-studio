@@ -162,7 +162,9 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     if (preview.tag !== null) setField("tag", preview.tag);
     if (preview.title1 !== null) setField("title1", preview.title1);
     if (preview.title2 !== null) setField("title2", preview.title2);
-    if (preview.warn !== null) setField("warn", preview.warn);
+    // 版型裡 warn 欄位預設會帶一句提示文字（例如「違法行為 請勿模仿」），
+    // 如果這次工單沒有寫「警語=」，要主動清空，不然畫面會殘留預設警語小字。
+    setField("warn", preview.warn ?? "");
 
     // 色塊只負責生成內容，位置用預設值堆疊在畫面中間，套用完自己拖到對的地方，
     // 顏色也先給一個預設紅色，想換色直接在右側「裝飾色塊」面板點色盤即可。

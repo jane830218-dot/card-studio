@@ -14,16 +14,9 @@ export const BADGE_SHAPE_LABELS: Record<BadgeShape, string> = {
 // 目前兩款都是現成 PNG 素材，顏色已經固定在圖裡，沒有可自訂底色的形狀。
 export const COLORABLE_SHAPES: BadgeShape[] = [];
 
-// 依文字長度自動縮小字級，避免文字爆出色塊外（跟 templates.ts 裡各版型 autofit 標題的邏輯同概念）
-function fitFontSize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, baseSize: number, minSize: number) {
-  let size = baseSize;
-  while (size > minSize) {
-    ctx.font = `900 ${size}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
-    if (ctx.measureText(text).width <= maxWidth) break;
-    size -= 2;
-  }
-  return size;
-}
+// 規範：文字字級（上下高度）永遠固定，不會因為字數變多而縮小；
+// 字數太多、原本的安全區塞不下時，改成把「色塊底圖」整個往左右拉寬，絕對不裁切文字。
+const FIXED_FONT_SIZE = 96;
 
 function drawCenteredText(
   ctx: CanvasRenderingContext2D,
@@ -57,6 +50,8 @@ interface ImageBadgeConfig {
   assetPath: string;
   naturalW: number;
   naturalH: number;
+  // 文字安全區（以「原始底圖大小」為基準量出來的）：x/w 用來定位文字左右置中點，
+  // 字數太多需要拉寬底圖時，x/w 會跟著拉寬倍率等比例放大；y/h（上下位置）永遠不變。
   textBox: { x: number; y: number; w: number; h: number };
   textColor: string;
   textStroke: string;
@@ -74,12 +69,12 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textColor: "#ffffff",
     textStroke: "#ac0701",
   },
-  // 02 爆炸框(緞帶款)：文字位置依你提供的參考圖，維持既有安全區域，不置中
+  // 02 爆炸框(緞帶款)：往左 1.5 個字、往上 1 個字，再往下修回半個字元、往右修回 0.5 個字
   "burst-ribbon": {
     assetPath: `${BASE}assets/badges/burst-ribbon.png`,
     naturalW: 453,
     naturalH: 139,
-    textBox: { x: 160, y: 46, w: 270, h: 58 },
+    textBox: { x: 114, y: 32, w: 270, h: 58 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
   },
@@ -102,15 +97,32 @@ function loadBadgeImage(shape: BadgeShape, cfg: ImageBadgeConfig): Promise<HTMLI
 
 async function drawImageBadge(shape: BadgeShape, text: string, cfg: ImageBadgeConfig): Promise<string> {
   const img = await loadBadgeImage(shape, cfg);
-  const canvas = document.createElement("canvas");
-  canvas.width = cfg.naturalW;
-  canvas.height = cfg.naturalH;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, cfg.naturalW, cfg.naturalH);
+
+  // 先用固定字級量出文字實際需要多寬，字級本身絕對不縮小。
+  const measureCtx = document.createElement("canvas").getContext("2d")!;
+  measureCtx.font = `900 ${FIXED_FONT_SIZE}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
+  const textWidth = measureCtx.measureText(text).width;
+
   const { x, y, w, h } = cfg.textBox;
-  const fontSize = fitFontSize(ctx, text, w, Math.min(h, 56), 20);
+  const padding = 24; // 文字左右留一點安全間距，不要貼齊安全區邊界
+  const neededWidth = textWidth + padding;
+
+  // 安全區塞得下就維持原尺寸；塞不下時，整張底圖只往左右等比例拉寬（不拉高），
+  // 拉寬倍率 = 需要的寬度 / 原本安全區寬度，這樣文字永遠不會被裁切。
+  const widenScale = Math.max(1, neededWidth / w);
+  const canvasW = Math.ceil(cfg.naturalW * widenScale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW;
+  canvas.height = cfg.naturalH; // 高度永遠不變
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, canvasW, cfg.naturalH);
+
+  // 安全區的 x/w 跟著拉寬倍率等比例放大，y/h（上下位置與高度）維持設計時的原值不動。
+  const cx = (x + w / 2) * widenScale;
+  const cy = y + h / 2;
   // 邊框（stroke）固定 5px，對齊你提供的規範
-  drawCenteredText(ctx, text, x + w / 2, y + h / 2, fontSize, cfg.textColor, cfg.textStroke, 5);
+  drawCenteredText(ctx, text, cx, cy, FIXED_FONT_SIZE, cfg.textColor, cfg.textStroke, 5);
   return canvas.toDataURL("image/png");
 }
 
