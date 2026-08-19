@@ -22,6 +22,23 @@ export const COLORABLE_SHAPES: BadgeShape[] = [];
 // 每一款的字級都是直接從 PSD 量出來的（用我們實際的字型 DFLiHeiBdP 900 反推寬度去對 PSD 文字框的寬度），
 // 定義在下面各自的 ImageBadgeConfig.fontSize，不再是單一共用常數。
 
+// 量出文字「實際墨色範圍」（actualBoundingBoxLeft/Right），而不是字元標準寬度。
+// 全形標點（例如「（」「）」）的字元框本身就內建了不少留白（框寬跟其他全形字一樣，
+// 但可見的符號本身很窄、置中在框裡），如果只靠 measureText().width 這種「標準寬度」
+// 去計算留白/置中，遇到開頭或結尾是全形括號的文字，就會多出「字元內建留白」+「我們自己
+// 設定的留白」兩份，看起來留白比實際想要的還要多一大截。用 actualBoundingBox 量出來的
+// 才是「畫面上實際看得到墨色的範圍」，才能量出/置中出真正的留白距離。
+function measureInk(ctx: CanvasRenderingContext2D, text: string, fontSize: number) {
+  ctx.font = `900 ${fontSize}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
+  ctx.textAlign = "left";
+  const m = ctx.measureText(text);
+  // 這兩個值是相對於「文字起點（x=0，textAlign=left 的錨點）」量出來的墨色左右邊界，
+  // inkLeft 可能是正數（墨色比起點更往右，例如開頭是全形括號留白的情況）。
+  const inkLeft = -m.actualBoundingBoxLeft;
+  const inkRight = m.actualBoundingBoxRight;
+  return { inkLeft, inkRight, inkWidth: Math.max(0, inkRight - inkLeft) };
+}
+
 function drawCenteredText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -33,16 +50,21 @@ function drawCenteredText(
   strokeWidth = 6
 ) {
   ctx.font = `900 ${fontSize}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.lineJoin = "round";
+  // 用墨色範圍的中點去對齊 cx，而不是用 textAlign=center（那是用標準寬度的中點，
+  // 遇到開頭/結尾是全形括號這種「字元框留白不對稱」的文字，中心點會跟看起來的視覺中心對不上）。
+  const { inkLeft, inkRight } = measureInk(ctx, text, fontSize);
+  const inkCenter = (inkLeft + inkRight) / 2;
+  const drawX = cx - inkCenter;
   if (strokeWidth > 0) {
     ctx.strokeStyle = stroke;
     ctx.lineWidth = strokeWidth;
-    ctx.strokeText(text, cx, cy);
+    ctx.strokeText(text, drawX, cy);
   }
   ctx.fillStyle = fill;
-  ctx.fillText(text, cx, cy);
+  ctx.fillText(text, drawX, cy);
 }
 
 // ---- 圖片素材款：你自己準備好的去背 PNG（例如手畫或找到的爆炸框圖案）----
@@ -191,10 +213,10 @@ async function drawImageBadge(
 ): Promise<{ dataUrl: string; canvasW: number; naturalH: number }> {
   const img = await loadBadgeImage(shape, cfg);
 
-  // 先用固定字級量出文字實際需要多寬，字級本身絕對不縮小。
+  // 先用固定字級量出文字「實際墨色寬度」（不是字元標準寬度，理由見 measureInk 註解），
+  // 字級本身絕對不縮小。
   const measureCtx = document.createElement("canvas").getContext("2d")!;
-  measureCtx.font = `900 ${cfg.fontSize}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
-  const textWidth = measureCtx.measureText(text).width;
+  const { inkWidth: textWidth } = measureInk(measureCtx, text, cfg.fontSize);
 
   const { x, y, w, h } = cfg.textBox;
   // 文字跟左右邊框只留 0.5 個字寬的空間就好，不要像以前一樣留一大片白邊。
