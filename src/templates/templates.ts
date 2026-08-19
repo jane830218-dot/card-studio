@@ -59,10 +59,20 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
     {
       // 右上小標改成兩行（座標跟字級都是從「裝飾色塊.psd」的新版兩行圖層量出來、換算到
       // 960×540 工作畫布：x=536、第一行 y=49、第二行 y=89）。
-      // letterSpacing 補回 1.5px 避免字擠在一起；maxWidth 抓 350——8 個字（約 332px）
-      // 塞得下不會壓縮，9 個字以上（約 374px）才會觸發壓縮：字的「高度」維持不變，
-      // 只把「寬度」壓縮塞進安全寬度內，這是 drawStrokedTextSegments 既有的 maxWidth
-      // 縮放機制（ctx.scale 只壓 X 軸），不用額外寫邏輯。
+      // letterSpacing 補回 1.5px 避免字擠在一起；maxWidth 抓 380——9 個字（約 374px，
+      // PSD 最新單行示範字「竟是殺人未遂通緝犯」剛好 9 個字）塞得下不會壓縮，
+      // 10 個字以上（約 415px）才會觸發壓縮：字的「高度」維持不變，只把「寬度」壓縮
+      // 塞進安全寬度內，這是 drawStrokedTextSegments 既有的 maxWidth 縮放機制
+      // （ctx.scale 只壓 X 軸），不用額外寫邏輯。
+      // 邊框改成 4px：重新比對 PSD 才發現 PSD 的邊框是「外擴」畫在文字外側（Stroke
+      // position = Outside，size 4），但 canvas 的 strokeText 是「置中」畫在文字線條
+      // 正中間，畫完字（fillText）疊上去後只剩外側一半看得到，所以視覺上要跟 PSD
+      // 的外擴邊框看起來一樣寬，實際 lineWidth 要設兩倍（4px，換算輸出解析度就是
+      // PSD 的 8px≈視覺 4px 外擴邊框）。這就是之前「4px的邊不見了」一直沒抓對的原因。
+      // maxWidth 380→356：比照「顏色人物框安全框.png」量出來的新安全框（這四個緞帶框
+      // 專用，右邊界比舊版安全框窄很多，1920 空間 x=45~1801，換算 960 工作畫布是
+      // x=22.5~900.5），起點 x=536 + maxWidth 一定要留在 900 以內（多扣一點給邊框
+      // 外擴的視覺寬度），文字才不會超出安全框右邊界。
       name: "頂部標籤文字",
       draw: (ctx) => {
         const lines = (fields.tag as string).split("\n");
@@ -71,9 +81,9 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
           drawStrokedTextSegments(ctx, parseColorMarkup(line, colors.tagBase, colors.tagAccent), 536, lineY[i], {
             font: "700 40px 'DFLiHei', sans-serif",
             stroke: "#ffffff",
-            strokeWidth: 2,
+            strokeWidth: 4,
             letterSpacing: 1.5,
-            maxWidth: 350,
+            maxWidth: 356,
           });
         });
       },
@@ -105,6 +115,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
+      // maxWidth 850→810：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布
+      // x=900.5），起點 x=77，扣掉邊框外擴視覺寬度後留在安全框內。
       name: "標題第一行",
       draw: (ctx) => {
         drawStrokedTextSegments(
@@ -116,12 +128,13 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
             font: "900 97.5px 'MStiffHeiHK', sans-serif",
             stroke: colors.title1Stroke,
             strokeWidth: 7,
-            maxWidth: 850,
+            maxWidth: 810,
           }
         );
       },
     },
     {
+      // maxWidth 640→605：同上，比照新安全框右邊界，起點 x=284。
       name: "標題第二行",
       draw: (ctx) => {
         drawStrokedTextSegments(
@@ -133,7 +146,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
             font: "900 80px 'MStiffHeiHK', sans-serif",
             stroke: colors.title2Stroke,
             strokeWidth: 5,
-            maxWidth: 640,
+            maxWidth: 605,
           }
         );
       },
@@ -153,11 +166,13 @@ function withWarnText(
     draw: (ctx) => {
       if (!fields.warn) return;
       const title1Segs = parseColorMarkup(fields.title1 as string, colors.title1Base, colors.title1Accent);
-      const title1Width = measureRenderedWidth(ctx, title1Segs, "900 97.5px 'MStiffHeiHK', sans-serif", 0, 850);
+      // 850→810：跟著「標題第一行」的 maxWidth 一起改，不然這裡量出來的寬度跟實際畫出來的對不上。
+      const title1Width = measureRenderedWidth(ctx, title1Segs, "900 97.5px 'MStiffHeiHK', sans-serif", 0, 810);
       const warnFont = "700 17px 'DFLiHei', sans-serif";
       ctx.font = warnFont;
       const warnTextWidth = ctx.measureText(fields.warn as string).width;
-      const SAFE_RIGHT = 937;
+      // 937→890：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布 x=900.5）往內收一點。
+      const SAFE_RIGHT = 890;
       let warnX = 77 + title1Width + 24;
       if (warnX + warnTextWidth > SAFE_RIGHT) warnX = SAFE_RIGHT - warnTextWidth;
       drawStrokedText(ctx, fields.warn as string, warnX, 417, {
@@ -179,7 +194,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "red",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為紅色強調）", default: "吵鬧被阻暴(還縱火)\n母男友加(全家送辦)" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為紅色強調）", default: "吵鬧被阻暴(還縱火)\n母男友加(全家送辦)" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "台中" },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
@@ -208,7 +223,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "purple",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為紫色強調）", default: "本人回應(詳情待查)\n對外一律不評論" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為紫色強調）", default: "本人回應(詳情待查)\n對外一律不評論" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
@@ -237,7 +252,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "blue",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為藍紫強調）", default: "(重要)路況提醒\n請提早改道行駛" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為藍紫強調）", default: "(重要)路況提醒\n請提早改道行駛" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為青色強調）", default: "示範(新聞標題)" },
@@ -266,7 +281,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "green",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為金黃強調）", default: "關鍵橘子(遲未返台)\n各界持續施壓中" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為金黃強調）", default: "關鍵橘子(遲未返台)\n各界持續施壓中" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為黃綠強調）", default: "示範(新聞標題)" },

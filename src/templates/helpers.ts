@@ -47,7 +47,10 @@ export function drawStrokedText(
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = strokeWidth;
+    // 字太多觸發左右壓縮（finalHScale < 1）時，lineWidth 是在「壓縮後」的座標系裡生效，
+    // 邊框在左右方向會被跟著壓扁，壓到看起來像「邊不見了」。這裡先除以 finalHScale
+    // 補回去，讓邊框壓縮後的實際寬度還是維持原本設定的粗細。
+    ctx.lineWidth = strokeWidth / finalHScale;
     ctx.strokeText(text, x, yBaseline);
   }
   if (fill) {
@@ -157,7 +160,8 @@ export function drawStrokedTextSegments(
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = strokeWidth;
+    // 同上：壓縮觸發時先除以 finalHScale 補回邊框粗細，避免邊框被壓到快消失。
+    ctx.lineWidth = strokeWidth / finalHScale;
     let cx = startX;
     segments.forEach((s, i) => {
       ctx.strokeText(s.text, cx, yBaseline);
