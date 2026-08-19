@@ -47,6 +47,12 @@ export default function Editor() {
     const decorationDataUrl = decorationCanvas.toDataURL({ format: "png", multiplier: 2, quality: 1 } as any);
     const img = new Image();
     img.onload = () => {
+      // 重要：exportCtx 是從 renderExportCanvas() 那張畫布拿出來的同一個 context，
+      // 裡面還殘留著畫版型時設定的 scale(2,2)（960→1920 換算用）。
+      // 這裡疊色塊圖是直接用 1920×1080 的實際像素座標畫，如果不先重設回原點，
+      // drawImage 會被那個殘留的 2 倍縮放「再放大一次」，色塊在下載出來的圖裡
+      // 就會變成位置偏移、尺寸放大兩倍（畫面上看起來正常，下載出來卻跑位）。
+      exportCtx.setTransform(1, 0, 0, 1, 0, 0);
       exportCtx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
       finishDownload();
     };
