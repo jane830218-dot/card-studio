@@ -93,6 +93,13 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
         const targetH = 90;
         const scale = targetH / (img.height || targetH);
         const targetW = (img.width || 0) * scale;
+        // 預設置中公式：字數太多時 badges.ts 會把底圖拉得比整個畫布（960px）還寬，
+        // 這種情況「(畫布寬 - 色塊寬) / 2」會算出負數，色塊（含左邊圓弧、文字開頭）
+        // 就會被推到畫布外面看不到，變成畫面上只看到中間平的那段，圓弧像是不見了。
+        // 所以正常情況維持置中，太寬時改成貼著左邊留一點邊界，至少左邊圓弧跟文字開頭看得到，
+        // 使用者還是可以再自己拖曳調整位置。
+        const margin = 16;
+        const defaultLeft = Math.max(margin, (PREVIEW_W - targetW) / 2);
         img.set({
           // Fabric 這個版本圖片物件預設 originX/originY 是 "center"（左上角座標系不是預設值了），
           // 但下面這行「置中公式」跟票單匯入指定的 opts.left/top 都是照「左上角」邏輯算的，
@@ -100,7 +107,7 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
           // 甚至可能跑到畫布外面看不到。明講成左上角基準，才會跟公式/opts 想要的位置一致。
           originX: "left",
           originY: "top",
-          left: opts?.left ?? (PREVIEW_W - targetW) / 2,
+          left: opts?.left ?? defaultLeft,
           top: opts?.top ?? (PREVIEW_H - targetH) / 2,
           scaleX: scale,
           scaleY: scale,
