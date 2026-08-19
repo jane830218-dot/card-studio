@@ -58,9 +58,11 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
     frameLayer(imgKey),
     {
       // 右上小標改成兩行（座標跟字級都是從「裝飾色塊.psd」的新版兩行圖層量出來、換算到
-      // 960×540 工作畫布：x=536、第一行 y=49、第二行 y=89、安全寬度 355）。
-      // 每行預設抓 9 個字，超過 9 個字時字的「高度」維持不變，只把「寬度」壓縮塞進安全寬度內——
-      // 這是 drawStrokedTextSegments 既有的 maxWidth 縮放機制（ctx.scale 只壓 X 軸），不用額外寫邏輯。
+      // 960×540 工作畫布：x=536、第一行 y=49、第二行 y=89）。
+      // letterSpacing 補回 1.5px 避免字擠在一起；maxWidth 抓 350——8 個字（約 332px）
+      // 塞得下不會壓縮，9 個字以上（約 374px）才會觸發壓縮：字的「高度」維持不變，
+      // 只把「寬度」壓縮塞進安全寬度內，這是 drawStrokedTextSegments 既有的 maxWidth
+      // 縮放機制（ctx.scale 只壓 X 軸），不用額外寫邏輯。
       name: "頂部標籤文字",
       draw: (ctx) => {
         const lines = (fields.tag as string).split("\n");
@@ -70,7 +72,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
             font: "700 40px 'DFLiHei', sans-serif",
             stroke: "#ffffff",
             strokeWidth: 2,
-            maxWidth: 355,
+            letterSpacing: 1.5,
+            maxWidth: 350,
           });
         });
       },
@@ -176,7 +179,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "red",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，() 內為紅色強調）", default: "吵鬧被阻暴走(還縱火)\n母男友加入(全家送辦)" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為紅色強調）", default: "吵鬧被阻暴(還縱火)\n母男友加(全家送辦)" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "台中" },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
@@ -205,7 +208,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "purple",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，() 內為紫色強調）", default: "本人回應：(詳情待查)\n對外一律不評論" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為紫色強調）", default: "本人回應(詳情待查)\n對外一律不評論" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
@@ -234,7 +237,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "blue",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，() 內為藍紫強調）", default: "(重要)路況提醒\n請提早改道行駛" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為藍紫強調）", default: "(重要)路況提醒\n請提早改道行駛" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為青色強調）", default: "示範(新聞標題)" },
@@ -263,7 +266,7 @@ export const TEMPLATES: TemplateDef[] = [
     thumbImg: "green",
     imageSlot: { x: 0, y: 0, w: 380, h: 540, fit: "cover" },
     fields: [
-      { key: "tag", label: "頂部標籤文字（可兩行，() 內為金黃強調）", default: "關鍵橘子(遲未返台)\n各界持續施壓中" },
+      { key: "tag", label: "頂部標籤文字（可兩行，每行預設8字，() 內為金黃強調）", default: "關鍵橘子(遲未返台)\n各界持續施壓中" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
       { key: "title1", label: "標題第一行（() 內為黃綠強調）", default: "示範(新聞標題)" },
