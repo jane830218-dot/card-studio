@@ -186,7 +186,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
       <textarea
         rows={12}
         placeholder={
-          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n右上小標=\n(擅闖管制區)恐吃罰單\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
+          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n右上小標=\n吵鬧被阻暴走(還縱火)\n母男友加入(全家送辦)\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
         }
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
@@ -213,7 +213,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
             )}
             {preview.frameNumber && <span>（框{preview.frameNumber}，目前僅供參考，尚未對應多款式）</span>}
           </div>
-          <div>右上小標：{preview.tag ?? <em>（未偵測到）</em>}</div>
+          <div style={{ whiteSpace: "pre-wrap" }}>右上小標：{preview.tag ?? <em>（未偵測到）</em>}</div>
           <div>標題第一行：{preview.title1 ?? <em>（未偵測到）</em>}</div>
           <div>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
           {preview.warn !== null && <div>警語：{preview.warn}</div>}

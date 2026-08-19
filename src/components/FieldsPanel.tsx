@@ -32,7 +32,7 @@ export default function FieldsPanel() {
           <div key={f.key}>
             <label className="field-label">{f.label}</label>
             <textarea
-              rows={f.key.includes("title") ? 2 : 1}
+              rows={f.key.includes("title") || f.key === "tag" ? 2 : 1}
               value={(fieldValues[f.key] as string) || ""}
               onChange={(e) => setField(f.key, e.target.value)}
             />
