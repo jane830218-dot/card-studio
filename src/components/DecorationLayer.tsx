@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
-import { generateBadgeImage, regenerateBadgeImage, type BadgeShape } from "../lib/badges";
+import { generateBadgeImage, type BadgeShape } from "../lib/badges";
 import { PREVIEW_W, PREVIEW_H } from "./CardCanvas";
 
 // 疊在 CardCanvas 上面的透明互動層：裝飾色塊（圓角框／爆炸框／郵票框）都加在這裡，
@@ -35,47 +35,8 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
     };
     document.addEventListener("keydown", handleKeyDown);
 
-    // 色塊（圖片素材款）只允許左右中間的控制點拉寬/壓窄，高度永遠鎖死（字級才不會被拉伸變形），
-    // 拖動結束後（放開滑鼠）重新畫一張兩端圓弧不失真的圖換上去，取代 Fabric 原生的整張圖等比例拉伸。
-    const handleModified = (e: any) => {
-      const target = e.target;
-      if (!target || !target.__badgeShape) return;
-      const heightScale = target.__badgeHeightScale as number;
-      // scaleX 沒有偏離「高度換算出來的固定縮放比例」，代表這次只是移動/旋轉，不是拉寬，不用重畫
-      if (Math.abs(target.scaleX - heightScale) < 0.005) return;
-
-      const displayWidth = target.width * target.scaleX; // 目前畫面上的實際寬度（960 座標系）
-      const targetNaturalW = displayWidth / heightScale; // 換算回底圖原始大小基準的目標寬度
-      // 記住拖曳結束當下的 left/top：setSrc 換圖是非同步的，等圖片載入完成這段期間
-      // 物件的 left 可能會被 Fabric 內部處理過程動一下，所以換完圖之後要把位置釘回原地，
-      // 不然使用者拖右邊的控制點放寬，結果變成整個色塊被移位。
-      const leftBeforeRegen = target.left;
-      const topBeforeRegen = target.top;
-      regenerateBadgeImage(target.__badgeShape as BadgeShape, target.__badgeText as string, targetNaturalW).then(
-        ({ dataUrl, canvasW, naturalH }) => {
-          target.setSrc(dataUrl).then(() => {
-            target.set({
-              left: leftBeforeRegen,
-              top: topBeforeRegen,
-              width: canvasW,
-              height: naturalH,
-              scaleX: heightScale,
-              scaleY: heightScale,
-            });
-            // 換完尺寸一定要呼叫 setCoords()，不然控制點（拖曳手把）的可點擊範圍還停在
-            // 換圖之前的舊尺寸，畫面上看起來已經變新的大小，但滑鼠其實點不到新的控制點位置，
-            // 使用者連續縮放第二次時就會發生「拖了沒反應」的情況。
-            target.setCoords();
-            fc.requestRenderAll();
-          });
-        }
-      );
-    };
-    fc.on("object:modified", handleModified);
-
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      fc.off("object:modified", handleModified);
       fc.dispose();
       fabricRef.current = null;
     };
@@ -116,22 +77,19 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
           scaleX: scale,
           scaleY: scale,
         });
-        // 記住這個色塊是哪一款、文字是什麼、高度縮放比例是多少（要永遠鎖住），
-        // 縮放結束時（object:modified）才有辦法重新畫圖、保留兩端圓弧不失真。
-        (img as any).__badgeShape = shape;
-        (img as any).__badgeText = text;
-        (img as any).__badgeHeightScale = scale;
-        // 只留左右中間的控制點可以拖（拉寬/壓窄），上下、四個角都關掉，
-        // 這樣高度（字級）不會被使用者不小心拖變形，旋轉控制點照常保留。
+        // 縮放固定「等比例」：只留四個角的控制點可以拖，上下左右中間那四個關掉
+        // （不然拖那些會單獨拉寬或拉高、破壞比例）。Fabric 預設拖角落控制點就是
+        // 等比例縮放（除非按住 shift），這樣整個色塊（含文字、圓角）會一起放大縮小，
+        // 不會變形。旋轉控制點照常保留。
         img.setControlsVisibility({
           mt: false,
           mb: false,
-          tl: false,
-          tr: false,
-          bl: false,
-          br: false,
-          ml: true,
-          mr: true,
+          ml: false,
+          mr: false,
+          tl: true,
+          tr: true,
+          bl: true,
+          br: true,
           mtr: true,
         });
         fc.add(img);
