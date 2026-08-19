@@ -61,6 +61,10 @@ interface ImageBadgeConfig {
   textStroke: string;
   strokeWidth: number;
   fontSize: number;
+  // 圓角/圓弧「端蓋」寬度（以原始底圖大小為基準）：拉寬底圖時，左右各留這個寬度的區塊
+  // 原封不動複製（不拉伸），只拉伸中間那段，這樣不管拉多寬，兩端的圓弧都不會變形。
+  // 純長方形（沒有圓弧）或不規則爆炸框形狀就不設定，維持整張圖等比例拉伸的舊行為。
+  capW?: number;
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -105,6 +109,8 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textStroke: "#fff002",
     strokeWidth: 3,
     fontSize: 64,
+    // 兩端是完整的圓弧（實測整圈圓角，半徑＝高度的一半＝47px），拉寬時要保留
+    capW: 47,
   },
   "title-badge-02": {
     assetPath: `${BASE}assets/badges/title-badge-02.png`,
@@ -115,6 +121,7 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textStroke: "#fff002",
     strokeWidth: 3,
     fontSize: 64,
+    capW: 47,
   },
   "title-badge-03": {
     assetPath: `${BASE}assets/badges/title-badge-03.png`,
@@ -125,6 +132,7 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textStroke: "#ffffff",
     strokeWidth: 4,
     fontSize: 74,
+    // 這款本身是直角矩形，沒有圓弧要保留，不設定 capW（整張等比例拉伸即可）
   },
 };
 
@@ -143,7 +151,43 @@ function loadBadgeImage(shape: BadgeShape, cfg: ImageBadgeConfig): Promise<HTMLI
   });
 }
 
-async function drawImageBadge(shape: BadgeShape, text: string, cfg: ImageBadgeConfig): Promise<string> {
+// 把底圖畫到目標寬度 targetW：如果有設定 capW（兩端圓弧寬度），左右兩端各裁一塊「原封不動」貼上去，
+// 中間那一段才拉伸／壓縮，這樣不管拉多寬，兩端的圓弧形狀都不會被拉變形；
+// 沒有設定 capW（例如爆炸框的不規則外框、或本身就是直角矩形）就維持整張圖等比例縮放的舊行為。
+function drawCapPreservingStretch(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  naturalW: number,
+  naturalH: number,
+  targetW: number,
+  capW: number | undefined
+) {
+  const cap = capW ? Math.min(capW, Math.floor(naturalW / 2)) : 0;
+  if (cap <= 0) {
+    ctx.drawImage(img, 0, 0, targetW, naturalH);
+    return;
+  }
+  const midSrcW = naturalW - cap * 2;
+  const midDstW = Math.max(0, targetW - cap * 2);
+  // 左端圓弧：原尺寸複製，完全不拉伸
+  ctx.drawImage(img, 0, 0, cap, naturalH, 0, 0, cap, naturalH);
+  // 中間直段：只有這裡跟著拉寬/壓窄
+  if (midSrcW > 0 && midDstW > 0) {
+    ctx.drawImage(img, cap, 0, midSrcW, naturalH, cap, 0, midDstW, naturalH);
+  }
+  // 右端圓弧：原尺寸複製，完全不拉伸
+  ctx.drawImage(img, naturalW - cap, 0, cap, naturalH, targetW - cap, 0, cap, naturalH);
+}
+
+// 核心繪製：可以指定「至少要多寬」（forceMinW，通常來自使用者手動拖曳想要的寬度），
+// 實際寬度＝max(容納文字所需的寬度, forceMinW)，這樣使用者可以自由把色塊拖寬（留白變多），
+// 但沒辦法拖到比文字還窄、把字擠爆或裁到。
+async function drawImageBadge(
+  shape: BadgeShape,
+  text: string,
+  cfg: ImageBadgeConfig,
+  forceMinW?: number
+): Promise<{ dataUrl: string; canvasW: number; naturalH: number }> {
   const img = await loadBadgeImage(shape, cfg);
 
   // 先用固定字級量出文字實際需要多寬，字級本身絕對不縮小。
@@ -155,27 +199,42 @@ async function drawImageBadge(shape: BadgeShape, text: string, cfg: ImageBadgeCo
   const padding = 24; // 文字左右留一點安全間距，不要貼齊安全區邊界
   const neededWidth = textWidth + padding;
 
-  // 安全區塞得下就維持原尺寸；塞不下時，整張底圖只往左右等比例拉寬（不拉高），
+  // 安全區塞得下就維持原尺寸；塞不下時，整張底圖只往左右拉寬（不拉高），
   // 拉寬倍率 = 需要的寬度 / 原本安全區寬度，這樣文字永遠不會被裁切。
-  const widenScale = Math.max(1, neededWidth / w);
-  const canvasW = Math.ceil(cfg.naturalW * widenScale);
+  // 使用者手動拖曳指定的寬度（forceMinW）可以再更寬，但不能比文字所需的寬度窄。
+  const textWidenScale = Math.max(1, neededWidth / w);
+  const textMinCanvasW = Math.ceil(cfg.naturalW * textWidenScale);
+  const canvasW = Math.max(textMinCanvasW, Math.ceil(forceMinW ?? 0));
+  const widenScale = canvasW / cfg.naturalW;
 
   const canvas = document.createElement("canvas");
   canvas.width = canvasW;
   canvas.height = cfg.naturalH; // 高度永遠不變
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, canvasW, cfg.naturalH);
+  drawCapPreservingStretch(ctx, img, cfg.naturalW, cfg.naturalH, canvasW, cfg.capW);
 
-  // 安全區的 x/w 跟著拉寬倍率等比例放大，y/h（上下位置與高度）維持設計時的原值不動。
+  // 文字安全區的 x/w 跟著拉寬倍率等比例放大，y/h（上下位置與高度）維持設計時的原值不動。
   const cx = (x + w / 2) * widenScale;
   const cy = y + h / 2;
   drawCenteredText(ctx, text, cx, cy, cfg.fontSize, cfg.textColor, cfg.textStroke, cfg.strokeWidth);
-  return canvas.toDataURL("image/png");
+  return { dataUrl: canvas.toDataURL("image/png"), canvasW, naturalH: cfg.naturalH };
 }
 
 export async function generateBadgeImage(shape: BadgeShape, text: string): Promise<string> {
   const imageCfg = IMAGE_BADGES[shape];
-  return drawImageBadge(shape, text || "文字", imageCfg);
+  const { dataUrl } = await drawImageBadge(shape, text || "文字", imageCfg);
+  return dataUrl;
+}
+
+// 給「畫布上手動拖曳縮放」用：使用者把色塊拖到某個寬度，重新畫一張兩端圓弧不失真的圖。
+// targetNaturalW 是「以底圖原始大小為基準」換算出來的目標寬度（呼叫端自己用高度縮放比例反推）。
+export async function regenerateBadgeImage(
+  shape: BadgeShape,
+  text: string,
+  targetNaturalW: number
+): Promise<{ dataUrl: string; canvasW: number; naturalH: number }> {
+  const imageCfg = IMAGE_BADGES[shape];
+  return drawImageBadge(shape, text || "文字", imageCfg, targetNaturalW);
 }
 
 // 幾個跟你版型現有配色一致的常用底色，快速點選用
