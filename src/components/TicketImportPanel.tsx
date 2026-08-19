@@ -12,6 +12,9 @@ import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
 //                                            「主標色塊字」裝飾色塊（位置不固定，套用後自己拖到主標上面），
 //                                            剩下的行才是真正的標題第一行／第二行
 //   小標=                                  → 對應 tag 欄位（頂部標籤文字，可兩行）
+//   打卡=                                  → 對應 location 欄位（地點標）；如果主標=裡有拆出
+//                                            主標色塊字，套用時會自動勾選「有加主標色塊字」，
+//                                            地點標跟著自動上移到左上角，不用手動勾
 //   色塊=                                  → 每行「形狀:文字」，自動生成裝飾色塊（位置/顏色不固定，
 //                                            所以只負責生成內容，位置給預設值，套用後自己拖到對的地方）
 //   (SOU:...)                              → 純備註，會被忽略，不會填進任何欄位
@@ -57,6 +60,7 @@ interface ParsedTicket {
   title1: string | null;
   title2: string | null;
   titleBadgeText: string | null;
+  location: string | null;
   warn: string | null;
   badges: ParsedBadge[];
   ignoredLines: string[];
@@ -76,6 +80,7 @@ function parseTicketText(raw: string): ParsedTicket {
     title1: null,
     title2: null,
     titleBadgeText: null,
+    location: null,
     warn: null,
     badges: [],
     ignoredLines: [],
@@ -83,7 +88,12 @@ function parseTicketText(raw: string): ParsedTicket {
 
   // 一段是不是「另一個區塊標記」的開頭，用來判斷 主標= 該在哪裡停止往後併段落。
   const isKnownMarkerBlock = (b: string) =>
-    b.startsWith("主標=") || b.startsWith("小標=") || b.startsWith("警語=") || b.startsWith("色塊=") || /^\(SOU[:：]/i.test(b);
+    b.startsWith("主標=") ||
+    b.startsWith("小標=") ||
+    b.startsWith("警語=") ||
+    b.startsWith("打卡=") ||
+    b.startsWith("色塊=") ||
+    /^\(SOU[:：]/i.test(b);
 
   let i = 0;
   while (i < blocks.length) {
@@ -125,6 +135,22 @@ function parseTicketText(raw: string): ParsedTicket {
 
     if (block.startsWith("警語=")) {
       result.warn = block.replace(/^警語=\s*/, "").trim();
+      i++;
+      continue;
+    }
+
+    if (block.startsWith("打卡=")) {
+      // 打卡=後面常常直接接一行 (SOU:...) 備註、中間沒有空行分隔，只取第一行當地點，
+      // 其餘行如果不是 (SOU:...) 備註才丟到「未解析」給人工看。
+      const lines = block
+        .replace(/^打卡=\s*/, "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      result.location = lines[0] ?? null;
+      lines.slice(1).forEach((l) => {
+        if (!/^\(SOU[:：]/i.test(l)) result.ignoredLines.push(l);
+      });
       i++;
       continue;
     }
@@ -203,9 +229,13 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     if (preview.tag !== null) setField("tag", preview.tag);
     if (preview.title1 !== null) setField("title1", preview.title1);
     if (preview.title2 !== null) setField("title2", preview.title2);
+    if (preview.location !== null) setField("location", preview.location);
     // 版型裡 warn 欄位預設會帶一句提示文字（例如「違法行為 請勿模仿」），
     // 如果這次工單沒有寫「警語=」，要主動清空，不然畫面會殘留預設警語小字。
     setField("warn", preview.warn ?? "");
+    // 有主標色塊字又有地點標時，地點標要自動上移到左上角（紅色人物框02.psd 的規範），
+    // 不用她自己再手動勾一次。
+    setField("hasTitleBadge", Boolean(preview.titleBadgeText && preview.location));
 
     // 色塊只負責生成內容，位置用預設值堆疊在畫面中間，套用完自己拖到對的地方，
     // 顏色也先給一個預設紅色，想換色直接在右側「裝飾色塊」面板點色盤即可。
@@ -230,14 +260,15 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     <div>
       <div className="section-title">貼上工單文字自動生成</div>
       <div className="hint" style={{ marginBottom: 8 }}>
-        直接貼上「說明」欄位的完整內容（含 主標= / 小標= / 色塊= 等區塊），按「解析」預覽拆解結果，
+        直接貼上「說明」欄位的完整內容（含 主標= / 小標= / 打卡= / 色塊= 等區塊），按「解析」預覽拆解結果，
         確認沒問題再按「套用」寫入版型、欄位與裝飾色塊。主標=第一行如果是「(文字)----主標小色塊字」，
-        會自動拆成一個放在主標上方的裝飾色塊。
+        會自動拆成一個放在主標上方的裝飾色塊；這時如果同時有 打卡= 地點，地點標會自動上移到左上角
+        （紅色人物框02.psd 的規範，避免被色塊字擋到）。
       </div>
       <textarea
         rows={12}
         placeholder={
-          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n(重大破案)----主標小色塊字\n\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n小標=\n吵鬧被阻暴(還縱火)\n母男友加(全家送辦)\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
+          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n(重大破案)----主標小色塊字\n\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n小標=\n吵鬧被阻暴(還縱火)\n母男友加(全家送辦)\n\n打卡=苗栗\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
         }
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
@@ -267,7 +298,13 @@ export default function TicketImportPanel({ decorationRef }: Props) {
           <div style={{ whiteSpace: "pre-wrap" }}>小標：{preview.tag ?? <em>（未偵測到）</em>}</div>
           <div>標題第一行：{preview.title1 ?? <em>（未偵測到）</em>}</div>
           <div>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
-          {preview.titleBadgeText && <div>主標色塊字：{preview.titleBadgeText}（自動用黃底款，套用後可自行更換）</div>}
+          {preview.titleBadgeText && (
+            <div>
+              主標色塊字：{preview.titleBadgeText}（自動用黃底款，套用後可自行更換）
+              {preview.location && "，地點標會自動上移到左上角"}
+            </div>
+          )}
+          {preview.location !== null && <div>打卡地點：{preview.location}</div>}
           {preview.warn !== null && <div>警語：{preview.warn}</div>}
           {preview.badges.length > 0 && (
             <div>

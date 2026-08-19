@@ -89,28 +89,42 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
+      // 有加「主標色塊字」時，地點標的舊位置（左下、貼近標題）會被色塊字擋到，
+      // 所以要照「紅色人物框02.psd」上移到左上角（不超出安全框，高度跟右邊小標對齊）。
+      // 圖示高度still是 37（規範不變，PSD 量出來的新圖示高度也剛好是 37，沒有跟著縮放），
+      // 只是換了 x/y 起點：PSD icon 群組 bbox (73,71)-(128,145) 1920 空間，換算 960
+      // 工作畫布是 (36.5,35.5)-(64,72.5)。
       name: "地點 ICON（原始檔）",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
         const icon = loadedIcons[imgKey];
-        const ICON_BOTTOM_ADJUST = 4;
+        const h = 37,
+          w = h * (icon ? icon.width / icon.height : 1);
         if (icon) {
-          const h = 37,
-            w = h * (icon.width / icon.height);
-          ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
+          if (fields.hasTitleBadge) {
+            ctx.drawImage(icon, 37, 35, w, h);
+          } else {
+            const ICON_BOTTOM_ADJUST = 4;
+            ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
+          }
         }
       },
     },
     {
+      // 同上，文字位置也比照「紅色人物框02.psd」上移：PSD 文字 bbox (142,77)-(282,143)
+      // 1920 空間，換算 960 工作畫布左邊界 x=71，baseline 抓文字框底部再留一點降部空間
+      // （比照舊版 icon 底部到 baseline 的 4px 間距抓 y=68）。字級/顏色/邊框/maxWidth
+      // 都維持原本規範不變，只有座標换了。
       name: "地點標籤文字",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
-        drawStrokedText(ctx, (fields.location as string) || "地點", 116, 313, {
+        const [x, y] = fields.hasTitleBadge ? [71, 68] : [116, 313];
+        drawStrokedText(ctx, (fields.location as string) || "地點", x, y, {
           font: "900 36.8px 'MStiffHeiHK', sans-serif",
           fill: colors.locationText,
           stroke: "#ffffff",
           strokeWidth: 2,
-          maxWidth: 520,
+          maxWidth: fields.hasTitleBadge ? 400 : 520,
         });
       },
     },
@@ -197,6 +211,12 @@ export const TEMPLATES: TemplateDef[] = [
       { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為紅色強調）", default: "吵鬧被阻暴(還縱火)\n母男友加(全家送辦)" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "台中" },
+      {
+        key: "hasTitleBadge",
+        type: "checkbox",
+        label: "有加主標色塊字（地點標會自動上移到左上角，避免被色塊字擋到）",
+        default: false,
+      },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
       { key: "title2", label: "標題第二行（() 內為紅色強調）", default: "效果(展示文字)" },
       { key: "warn", label: "警語小字（可留空）", default: "違法行為 請勿模仿" },
@@ -226,6 +246,12 @@ export const TEMPLATES: TemplateDef[] = [
       { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為紫色強調）", default: "本人回應(詳情待查)\n對外一律不評論" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
+      {
+        key: "hasTitleBadge",
+        type: "checkbox",
+        label: "有加主標色塊字（地點標會自動上移到左上角，避免被色塊字擋到）",
+        default: false,
+      },
       { key: "title1", label: "標題第一行（() 內為黃色強調）", default: "示範(新聞標題)" },
       { key: "title2", label: "標題第二行（() 內為紫色強調）", default: "效果(展示文字)" },
       { key: "warn", label: "警語小字（可留空）", default: "違法行為 請勿模仿" },
@@ -255,6 +281,12 @@ export const TEMPLATES: TemplateDef[] = [
       { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為藍紫強調）", default: "(重要)路況提醒\n請提早改道行駛" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
+      {
+        key: "hasTitleBadge",
+        type: "checkbox",
+        label: "有加主標色塊字（地點標會自動上移到左上角，避免被色塊字擋到）",
+        default: false,
+      },
       { key: "title1", label: "標題第一行（() 內為青色強調）", default: "示範(新聞標題)" },
       { key: "title2", label: "標題第二行（() 內為藍紫強調）", default: "效果(展示文字)" },
       { key: "warn", label: "警語小字（可留空）", default: "違法行為 請勿模仿" },
@@ -284,6 +316,12 @@ export const TEMPLATES: TemplateDef[] = [
       { key: "tag", label: "頂部標籤文字（可兩行，每行9字內，() 內為金黃強調）", default: "關鍵橘子(遲未返台)\n各界持續施壓中" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點（也可放其他小資訊）", default: "地點" },
+      {
+        key: "hasTitleBadge",
+        type: "checkbox",
+        label: "有加主標色塊字（地點標會自動上移到左上角，避免被色塊字擋到）",
+        default: false,
+      },
       { key: "title1", label: "標題第一行（() 內為黃綠強調）", default: "示範(新聞標題)" },
       { key: "title2", label: "標題第二行（() 內為金黃強調）", default: "效果(展示文字)" },
       { key: "warn", label: "警語小字（可留空）", default: "違法行為 請勿模仿" },
