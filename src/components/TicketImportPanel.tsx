@@ -6,8 +6,12 @@ import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
 // 貼上工單「說明」欄位的原始文字，自動解析成版型 + 欄位值 + 裝飾色塊。
 // 支援的區塊標記（跟發單習慣一致）：
 //   第一段（通常是「XX色人物框 框N 主題」）→ 用來判斷要套用哪個顏色版型
-//   主標=                                  → 標題第一行／第二行（依換行拆兩行）
-//   右上小標=                              → 對應 tag 欄位（頂部標籤文字）
+//   主標=                                  → 標題第一行／第二行（依換行拆兩行）；
+//                                            第一行如果是「(文字)----主標小色塊字」這種格式，
+//                                            表示這是要放在主標上方的色塊字，會拆出來自動生成一個
+//                                            「主標色塊字」裝飾色塊（位置不固定，套用後自己拖到主標上面），
+//                                            剩下的行才是真正的標題第一行／第二行
+//   小標=                                  → 對應 tag 欄位（頂部標籤文字，可兩行）
 //   色塊=                                  → 每行「形狀:文字」，自動生成裝飾色塊（位置/顏色不固定，
 //                                            所以只負責生成內容，位置給預設值，套用後自己拖到對的地方）
 //   (SOU:...)                              → 純備註，會被忽略，不會填進任何欄位
@@ -34,6 +38,11 @@ const SHAPE_KEYWORD_TO_ID: Record<string, BadgeShape> = Object.fromEntries(
 ) as Record<string, BadgeShape>;
 const DEFAULT_BADGE_COLOR = "#C0000A";
 
+// 主標=裡「(文字)----主標小色塊字」這行專用的偵測 pattern，抓出 ---- 前面的文字內容。
+const TITLE_BADGE_MARKER = /^(.*)----\s*主標小色塊字\s*$/;
+// 工單沒有指定要用哪一款色塊時，預設用 01（黃底），套用後可以自己刪掉換別款重加。
+const DEFAULT_TITLE_BADGE_SHAPE: BadgeShape = "title-badge-01";
+
 interface ParsedBadge {
   shape: BadgeShape;
   shapeLabel: string;
@@ -47,6 +56,7 @@ interface ParsedTicket {
   tag: string | null;
   title1: string | null;
   title2: string | null;
+  titleBadgeText: string | null;
   warn: string | null;
   badges: ParsedBadge[];
   ignoredLines: string[];
@@ -65,30 +75,57 @@ function parseTicketText(raw: string): ParsedTicket {
     tag: null,
     title1: null,
     title2: null,
+    titleBadgeText: null,
     warn: null,
     badges: [],
     ignoredLines: [],
   };
 
-  for (const block of blocks) {
+  // 一段是不是「另一個區塊標記」的開頭，用來判斷 主標= 該在哪裡停止往後併段落。
+  const isKnownMarkerBlock = (b: string) =>
+    b.startsWith("主標=") || b.startsWith("小標=") || b.startsWith("警語=") || b.startsWith("色塊=") || /^\(SOU[:：]/i.test(b);
+
+  let i = 0;
+  while (i < blocks.length) {
+    const block = blocks[i];
+
     if (block.startsWith("主標=")) {
-      const lines = block
-        .replace(/^主標=\s*/, "")
+      // 主標= 底下可能因為「(文字)----主標小色塊字」那行後面留了空白行，
+      // 被切成好幾段；持續往後併段落，直到遇到下一個已知區塊標記為止，
+      // 這樣「主標小色塊字」那行跟真正的標題第一行／第二行才不會被拆散。
+      let merged = block.replace(/^主標=\s*/, "");
+      let j = i + 1;
+      while (j < blocks.length && !isKnownMarkerBlock(blocks[j])) {
+        merged += "\n" + blocks[j];
+        j++;
+      }
+      i = j;
+
+      let lines = merged
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean);
+      // 第一行如果是「(文字)----主標小色塊字」，代表這是要放在主標上方的色塊字，
+      // 先拆出來，剩下的行才是真正的標題第一行／第二行。
+      const badgeMatch = lines[0] ? lines[0].match(TITLE_BADGE_MARKER) : null;
+      if (badgeMatch) {
+        result.titleBadgeText = badgeMatch[1].trim();
+        lines = lines.slice(1);
+      }
       result.title1 = lines[0] ?? null;
       result.title2 = lines[1] ?? null;
       continue;
     }
 
-    if (block.startsWith("右上小標=")) {
-      result.tag = block.replace(/^右上小標=\s*/, "").trim();
+    if (block.startsWith("小標=")) {
+      result.tag = block.replace(/^小標=\s*/, "").trim();
+      i++;
       continue;
     }
 
     if (block.startsWith("警語=")) {
       result.warn = block.replace(/^警語=\s*/, "").trim();
+      i++;
       continue;
     }
 
@@ -110,11 +147,13 @@ function parseTicketText(raw: string): ParsedTicket {
           result.badges.push({ shape, shapeLabel, text });
         }
       });
+      i++;
       continue;
     }
 
     // (SOU:...) 純備註，直接跳過不處理
     if (/^\(SOU[:：]/i.test(block)) {
+      i++;
       continue;
     }
 
@@ -125,12 +164,14 @@ function parseTicketText(raw: string): ParsedTicket {
       if (colorMatch || frameMatch) {
         if (colorMatch) result.colorKeyword = colorMatch[1];
         if (frameMatch) result.frameNumber = frameMatch[1];
+        i++;
         continue;
       }
     }
 
     // 其他抓不到規則的段落（例如發單人/手機那行）先留著給人工確認，不自動套用
     result.ignoredLines.push(block);
+    i++;
   }
 
   if (result.colorKeyword) {
@@ -174,19 +215,29 @@ export default function TicketImportPanel({ decorationRef }: Props) {
         top: 200 + i * 60,
       });
     });
+
+    // 主標小色塊字：跟其他裝飾色塊一樣手動加上去，預設用 01（黃底）+ 預設位置，
+    // 套用後自己拖到主標上面、想換款式就刪掉在「裝飾色塊」面板重新選款加一個。
+    if (preview.titleBadgeText) {
+      decorationRef.current?.addBadge(DEFAULT_TITLE_BADGE_SHAPE, preview.titleBadgeText, DEFAULT_BADGE_COLOR, {
+        left: 330,
+        top: 120,
+      });
+    }
   };
 
   return (
     <div>
       <div className="section-title">貼上工單文字自動生成</div>
       <div className="hint" style={{ marginBottom: 8 }}>
-        直接貼上「說明」欄位的完整內容（含 主標= / 右上小標= / 色塊= 等區塊），按「解析」預覽拆解結果，
-        確認沒問題再按「套用」寫入版型、欄位與裝飾色塊。
+        直接貼上「說明」欄位的完整內容（含 主標= / 小標= / 色塊= 等區塊），按「解析」預覽拆解結果，
+        確認沒問題再按「套用」寫入版型、欄位與裝飾色塊。主標=第一行如果是「(文字)----主標小色塊字」，
+        會自動拆成一個放在主標上方的裝飾色塊。
       </div>
       <textarea
         rows={12}
         placeholder={
-          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n右上小標=\n吵鬧被阻暴(還縱火)\n母男友加(全家送辦)\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
+          "例：\n藍色人物框 框12七星潭刁車\n\n主標=\n(重大破案)----主標小色塊字\n\n不諳路況(闖七星潭)\n吉普車(陷海灘慘困)\n\n小標=\n吵鬧被阻暴(還縱火)\n母男友加(全家送辦)\n\n色塊=\n爆炸框(橫幅款):不來就辭總召!\n爆炸框(緞帶款):中元前後恐再漲"
         }
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
@@ -213,9 +264,10 @@ export default function TicketImportPanel({ decorationRef }: Props) {
             )}
             {preview.frameNumber && <span>（框{preview.frameNumber}，目前僅供參考，尚未對應多款式）</span>}
           </div>
-          <div style={{ whiteSpace: "pre-wrap" }}>右上小標：{preview.tag ?? <em>（未偵測到）</em>}</div>
+          <div style={{ whiteSpace: "pre-wrap" }}>小標：{preview.tag ?? <em>（未偵測到）</em>}</div>
           <div>標題第一行：{preview.title1 ?? <em>（未偵測到）</em>}</div>
           <div>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
+          {preview.titleBadgeText && <div>主標色塊字：{preview.titleBadgeText}（自動用黃底款，套用後可自行更換）</div>}
           {preview.warn !== null && <div>警語：{preview.warn}</div>}
           {preview.badges.length > 0 && (
             <div>

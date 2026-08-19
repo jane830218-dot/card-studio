@@ -4,11 +4,14 @@
 //
 // 每個函式回傳一張透明背景的 PNG dataURL，交給 DecorationLayer 當成一個可自由拖曳/縮放/旋轉的圖層加到畫布上。
 
-export type BadgeShape = "burst-h" | "burst-ribbon";
+export type BadgeShape = "burst-h" | "burst-ribbon" | "title-badge-01" | "title-badge-02" | "title-badge-03";
 
 export const BADGE_SHAPE_LABELS: Record<BadgeShape, string> = {
   "burst-h": "爆炸框(橫幅款)",
   "burst-ribbon": "爆炸框(緞帶款)",
+  "title-badge-01": "主標色塊字(黃底)",
+  "title-badge-02": "主標色塊字(紅底)",
+  "title-badge-03": "主標色塊字(白底)",
 };
 
 // 目前兩款都是現成 PNG 素材，顏色已經固定在圖裡，沒有可自訂底色的形狀。
@@ -16,10 +19,8 @@ export const COLORABLE_SHAPES: BadgeShape[] = [];
 
 // 規範：文字字級（上下高度）永遠固定，不會因為字數變多而縮小；
 // 字數太多、原本的安全區塞不下時，改成把「色塊底圖」整個往左右拉寬，絕對不裁切文字。
-// 字級跟下面 textBox 都是直接從你的「裝飾色塊.psd」量出來的：
-// PSD 裡示範文字「秘書誆情糾葛」（6 個字）框在寬 356 / 高 57 的範圍，用我們實際的字型
-// （DFLiHeiBdP 900）反推，59px 量出來的寬度跟 PSD 幾乎完全一致（354 vs 356）。
-const FIXED_FONT_SIZE = 59;
+// 每一款的字級都是直接從 PSD 量出來的（用我們實際的字型 DFLiHeiBdP 900 反推寬度去對 PSD 文字框的寬度），
+// 定義在下面各自的 ImageBadgeConfig.fontSize，不再是單一共用常數。
 
 function drawCenteredText(
   ctx: CanvasRenderingContext2D,
@@ -58,6 +59,8 @@ interface ImageBadgeConfig {
   textBox: { x: number; y: number; w: number; h: number };
   textColor: string;
   textStroke: string;
+  strokeWidth: number;
+  fontSize: number;
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -72,6 +75,8 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textBox: { x: 64, y: 37, w: 356, h: 57 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
+    strokeWidth: 5,
+    fontSize: 59,
   },
   // 02 爆炸框(緞帶款)：PSD 裡「爆炸字02」群組是 455×143，跟這張圖的 453×139 差一點點，
   // 文字框座標照比例縮放過（x=84, y=25, w=354, h=55）
@@ -82,6 +87,44 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textBox: { x: 84, y: 25, w: 354, h: 55 },
     textColor: "#ffffff",
     textStroke: "#ac0701",
+    strokeWidth: 5,
+    fontSize: 59,
+  },
+  // 03/04/05 主標色塊字：放在主標上方的色塊字，跟裝飾色塊一樣手動加到畫布上、自己拖到主標上面。
+  // 素材是你「裝飾色塊.psd」裡「主標上色塊字01/02/03」三款，都是從 PSD 原圖去背裁切出來的，
+  // 文字框/字級/邊框全部直接量 PSD：01、02 是同一個圓角色塊（564×94），只差底色跟位置；
+  // 03 是白色半透明矩形（719×99）。字級一樣用我們的字型反推寬度去對 PSD 文字框寬度
+  // （01/02："警匪飛車追逐" 6字，PSD寬386，64px量出來384，幾乎一致；
+  //  03："颱風外圍環流攪局" 8字，PSD寬592，74px量出來592，完全一致）。
+  "title-badge-01": {
+    assetPath: `${BASE}assets/badges/title-badge-01.png`,
+    naturalW: 564,
+    naturalH: 94,
+    textBox: { x: 90, y: 14, w: 386, h: 62 },
+    textColor: "#000000",
+    textStroke: "#fff002",
+    strokeWidth: 3,
+    fontSize: 64,
+  },
+  "title-badge-02": {
+    assetPath: `${BASE}assets/badges/title-badge-02.png`,
+    naturalW: 564,
+    naturalH: 94,
+    textBox: { x: 90, y: 14, w: 386, h: 62 },
+    textColor: "#ffffff",
+    textStroke: "#fff002",
+    strokeWidth: 3,
+    fontSize: 64,
+  },
+  "title-badge-03": {
+    assetPath: `${BASE}assets/badges/title-badge-03.png`,
+    naturalW: 719,
+    naturalH: 99,
+    textBox: { x: 105, y: 15, w: 592, h: 69 },
+    textColor: "#000000",
+    textStroke: "#ffffff",
+    strokeWidth: 4,
+    fontSize: 74,
   },
 };
 
@@ -105,7 +148,7 @@ async function drawImageBadge(shape: BadgeShape, text: string, cfg: ImageBadgeCo
 
   // 先用固定字級量出文字實際需要多寬，字級本身絕對不縮小。
   const measureCtx = document.createElement("canvas").getContext("2d")!;
-  measureCtx.font = `900 ${FIXED_FONT_SIZE}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
+  measureCtx.font = `900 ${cfg.fontSize}px 'DFLiHeiBdP', 'Microsoft JhengHei', sans-serif`;
   const textWidth = measureCtx.measureText(text).width;
 
   const { x, y, w, h } = cfg.textBox;
@@ -126,8 +169,7 @@ async function drawImageBadge(shape: BadgeShape, text: string, cfg: ImageBadgeCo
   // 安全區的 x/w 跟著拉寬倍率等比例放大，y/h（上下位置與高度）維持設計時的原值不動。
   const cx = (x + w / 2) * widenScale;
   const cy = y + h / 2;
-  // 邊框（stroke）固定 5px，對齊你提供的規範
-  drawCenteredText(ctx, text, cx, cy, FIXED_FONT_SIZE, cfg.textColor, cfg.textStroke, 5);
+  drawCenteredText(ctx, text, cx, cy, cfg.fontSize, cfg.textColor, cfg.textStroke, cfg.strokeWidth);
   return canvas.toDataURL("image/png");
 }
 

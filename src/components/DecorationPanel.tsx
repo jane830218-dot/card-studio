@@ -20,7 +20,7 @@ export default function DecorationPanel({ decorationRef }: Props) {
     <div>
       <div className="section-title">裝飾色塊</div>
       <div className="hint" style={{ marginBottom: 8 }}>
-爆炸框(橫幅款)／(緞帶款)是用你提供的圖案，顏色已經固定在圖裡。生成後可以直接在畫布上拖曳移動／拉角縮放／旋轉，位置不固定沒關係，加好之後自己調整就好。
+都是用你提供的圖案，顏色已經固定在圖裡。生成後可以直接在畫布上拖曳移動／拉角縮放／旋轉，位置不固定沒關係，加好之後自己調整就好。「主標色塊字」是放在主標上方的色塊，用法跟其他色塊一樣，手動加上去、自己拖到主標上面即可。
       </div>
 
       <div className="badge-shape-buttons">
