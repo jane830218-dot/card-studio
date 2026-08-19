@@ -38,11 +38,22 @@ export default function Editor() {
       return;
     }
 
+    // 匯出前先取消選取＋強制重繪一次：如果有色塊還在被選取（有控制手把）、
+    // 或畫布還沒重繪完就馬上匯出，toDataURL 抓到的畫面可能不完整，色塊看起來就像消失了。
+    decorationCanvas.discardActiveObject();
+    decorationCanvas.renderAll();
+
     // 色塊層預覽是 960×540，輸出圖是 1920×1080，用 multiplier: 2 讓色塊也一起放大兩倍匯出
     const decorationDataUrl = decorationCanvas.toDataURL({ format: "png", multiplier: 2, quality: 1 } as any);
     const img = new Image();
     img.onload = () => {
       exportCtx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+      finishDownload();
+    };
+    // 萬一色塊層轉出來的圖片載入失敗（理論上不會，但避免整個下載卡住沒反應），
+    // 還是讓版型本身正常下載，總比什麼都沒有好。
+    img.onerror = () => {
+      console.error("裝飾色塊圖層合成失敗，僅輸出版型本身");
       finishDownload();
     };
     img.src = decorationDataUrl;
