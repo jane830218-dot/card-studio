@@ -62,6 +62,10 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
               scaleX: heightScale,
               scaleY: heightScale,
             });
+            // 換完尺寸一定要呼叫 setCoords()，不然控制點（拖曳手把）的可點擊範圍還停在
+            // 換圖之前的舊尺寸，畫面上看起來已經變新的大小，但滑鼠其實點不到新的控制點位置，
+            // 使用者連續縮放第二次時就會發生「拖了沒反應」的情況。
+            target.setCoords();
             fc.requestRenderAll();
           });
         }

@@ -180,8 +180,9 @@ function drawCapPreservingStretch(
 }
 
 // 核心繪製：可以指定「至少要多寬」（forceMinW，通常來自使用者手動拖曳想要的寬度），
-// 實際寬度＝max(容納文字所需的寬度, forceMinW)，這樣使用者可以自由把色塊拖寬（留白變多），
-// 但沒辦法拖到比文字還窄、把字擠爆或裁到。
+// 實際寬度＝max(容納文字所需的寬度, 兩端圓弧不會擠在一起的寬度, forceMinW)。
+// 使用者可以自由把色塊拖寬或拖窄，但沒辦法拖到比「文字＋留白」還窄、把字擠爆或裁到，
+// 也沒辦法拖到比「兩端圓弧加起來」還窄、讓兩端圓弧互相擠壓變形。
 async function drawImageBadge(
   shape: BadgeShape,
   text: string,
@@ -196,16 +197,20 @@ async function drawImageBadge(
   const textWidth = measureCtx.measureText(text).width;
 
   const { x, y, w, h } = cfg.textBox;
-  const padding = 24; // 文字左右留一點安全間距，不要貼齊安全區邊界
-  const neededWidth = textWidth + padding;
+  // 文字跟左右邊框只留 0.5 個字寬的空間就好，不要像以前一樣留一大片白邊。
+  const paddingEachSide = cfg.fontSize * 0.5;
+  const neededWidth = textWidth + paddingEachSide * 2;
 
-  // 安全區塞得下就維持原尺寸；塞不下時，整張底圖只往左右拉寬（不拉高），
-  // 拉寬倍率 = 需要的寬度 / 原本安全區寬度，這樣文字永遠不會被裁切。
-  // 使用者手動拖曳指定的寬度（forceMinW）可以再更寬，但不能比文字所需的寬度窄。
-  const textWidenScale = Math.max(1, neededWidth / w);
-  const textMinCanvasW = Math.ceil(cfg.naturalW * textWidenScale);
+  // 字數少的話，色塊現在「可以」比底圖原始尺寸還窄（貼合文字），不像以前一樣
+  // 底圖尺寸是無條件下限；但兩端圓弧本身的寬度不能被壓縮，所以另外設一個
+  // 「兩端圓弧寬度相加」的下限，兩個下限取比較寬的那個。
+  const textWidenScale = neededWidth / w;
+  const capWidenScale = cfg.capW ? (cfg.capW * 2) / cfg.naturalW : 0;
+  const widenScale = Math.max(textWidenScale, capWidenScale, 0.01);
+  const textMinCanvasW = Math.ceil(cfg.naturalW * widenScale);
+  // 使用者手動拖曳指定的寬度（forceMinW）可以更寬或更窄，但不能窄過上面兩個下限。
   const canvasW = Math.max(textMinCanvasW, Math.ceil(forceMinW ?? 0));
-  const widenScale = canvasW / cfg.naturalW;
+  const finalWidenScale = canvasW / cfg.naturalW;
 
   const canvas = document.createElement("canvas");
   canvas.width = canvasW;
@@ -213,8 +218,9 @@ async function drawImageBadge(
   const ctx = canvas.getContext("2d")!;
   drawCapPreservingStretch(ctx, img, cfg.naturalW, cfg.naturalH, canvasW, cfg.capW);
 
-  // 文字安全區的 x/w 跟著拉寬倍率等比例放大，y/h（上下位置與高度）維持設計時的原值不動。
-  const cx = (x + w / 2) * widenScale;
+  // 文字安全區的 x/w 跟著拉寬倍率等比例縮放（不管是變寬還是變窄都適用），
+  // y/h（上下位置與高度）維持設計時的原值不動。
+  const cx = (x + w / 2) * finalWidenScale;
   const cy = y + h / 2;
   drawCenteredText(ctx, text, cx, cy, cfg.fontSize, cfg.textColor, cfg.textStroke, cfg.strokeWidth);
   return { dataUrl: canvas.toDataURL("image/png"), canvasW, naturalH: cfg.naturalH };
