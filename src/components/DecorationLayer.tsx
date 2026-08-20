@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { Canvas as FabricCanvas, FabricImage } from "fabric";
-import { generateBadgeImage, type BadgeShape } from "../lib/badges";
+import { generateBadgeImage, TITLE_BADGE_DEFAULT_PLACEMENT, type BadgeShape } from "../lib/badges";
 import { PREVIEW_W, PREVIEW_H } from "./CardCanvas";
 
 // 疊在 CardCanvas 上面的透明互動層：裝飾色塊（圓角框／爆炸框／郵票框）都加在這裡，
@@ -55,16 +55,32 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
         // badges.ts 現在字太多時會把底圖「拉寬」，寬度不再固定，
         // 所以這裡改成用固定「高度」換算縮放比例（badges.ts 保證高度永遠不變），
         // 這樣不管底圖被拉多寬，畫布上的文字大小都維持一致，不會因為色塊變寬而縮水。
-        const targetH = 90;
+        // 「主標色塊字」（01/02/03）用 PSD 實測的高度當預設值，其餘款式（PSD 裡沒有
+        // 實際擺放的參考圖層可以量）維持原本固定 90px 高的預設值。
+        const isTitleBadge = shape.startsWith("title-badge");
+        const targetH = isTitleBadge ? TITLE_BADGE_DEFAULT_PLACEMENT.height : 90;
         const scale = targetH / (img.height || targetH);
         const targetW = (img.width || 0) * scale;
-        // 預設置中公式：字數太多時 badges.ts 會把底圖拉得比整個畫布（960px）還寬，
-        // 這種情況「(畫布寬 - 色塊寬) / 2」會算出負數，色塊（含左邊圓弧、文字開頭）
-        // 就會被推到畫布外面看不到，變成畫面上只看到中間平的那段，圓弧像是不見了。
-        // 所以正常情況維持置中，太寬時改成貼著左邊留一點邊界，至少左邊圓弧跟文字開頭看得到，
-        // 使用者還是可以再自己拖曳調整位置。
-        const margin = 16;
-        const defaultLeft = Math.max(margin, (PREVIEW_W - targetW) / 2);
+
+        let defaultLeft: number;
+        let defaultTop: number;
+        if (isTitleBadge) {
+          // 主標色塊字：預設用「紅色人物框02.psd」裡實際擺放的中心點反推左上角（見 badges.ts
+          // 說明），不管文字多寡改變了色塊寬度，視覺中心都精準對在 PSD 量出來的位置上，
+          // 不用再像以前一樣每次都要自己從畫布正中央拖過去。
+          defaultLeft = TITLE_BADGE_DEFAULT_PLACEMENT.centerX - targetW / 2;
+          defaultTop = TITLE_BADGE_DEFAULT_PLACEMENT.centerY - targetH / 2;
+        } else {
+          // 爆炸框(橫幅/緞帶款)：這份 PSD 裡沒有實際擺放的參考圖層可以量，維持原本
+          // 「畫布置中」的預設邏輯。字數太多時 badges.ts 會把底圖拉得比整個畫布（960px）
+          // 還寬，這種情況「(畫布寬 - 色塊寬) / 2」會算出負數，色塊（含左邊圓弧、文字開頭）
+          // 就會被推到畫布外面看不到，變成畫面上只看到中間平的那段，圓弧像是不見了。
+          // 所以正常情況維持置中，太寬時改成貼著左邊留一點邊界，至少左邊圓弧跟文字開頭看得到，
+          // 使用者還是可以再自己拖曳調整位置。
+          const margin = 16;
+          defaultLeft = Math.max(margin, (PREVIEW_W - targetW) / 2);
+          defaultTop = (PREVIEW_H - targetH) / 2;
+        }
         img.set({
           // Fabric 這個版本圖片物件預設 originX/originY 是 "center"（左上角座標系不是預設值了），
           // 但下面這行「置中公式」跟票單匯入指定的 opts.left/top 都是照「左上角」邏輯算的，
@@ -73,7 +89,7 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
           originX: "left",
           originY: "top",
           left: opts?.left ?? defaultLeft,
-          top: opts?.top ?? (PREVIEW_H - targetH) / 2,
+          top: opts?.top ?? defaultTop,
           scaleX: scale,
           scaleY: scale,
         });

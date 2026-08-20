@@ -104,8 +104,10 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
           if (fields.hasTitleBadge) {
             ctx.drawImage(icon, 57, 18, w, h);
           } else {
+            // 「地點在主標上方」這個狀態（沒有主標色塊字）之前漏改：主標第一行往前移到
+            // x=57 之後，這裡跟文字都要跟著一起套用同樣的 -20 位移（77→57），才會對齊。
             const ICON_BOTTOM_ADJUST = 4;
-            ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
+            ctx.drawImage(icon, 57, 313 - h + ICON_BOTTOM_ADJUST, w, h);
           }
         }
       },
@@ -116,7 +118,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       name: "地點標籤文字",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
-        const [x, y] = fields.hasTitleBadge ? [91, 50] : [116, 313];
+        // 同上：「在主標上方」狀態的文字 x 之前漏改，跟著 icon 一起套用 -20 位移（116→96）。
+        const [x, y] = fields.hasTitleBadge ? [91, 50] : [96, 313];
         drawStrokedText(ctx, (fields.location as string) || "地點", x, y, {
           font: "900 36.8px 'MStiffHeiHK', sans-serif",
           fill: colors.locationText,
