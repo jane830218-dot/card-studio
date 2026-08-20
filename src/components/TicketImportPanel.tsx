@@ -16,8 +16,7 @@ import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
 //                                            () 內建支援黃色強調，不用像緞帶框那樣拆行）。
 //   小標=                                  → 緞帶框：對應 tag 欄位（頂部標籤文字，可兩行）。
 //                                            人物框大字：對應「下方說明文字」欄位（單行，
-//                                            這個欄位本身不支援 () 強調色，套用時會把 () 拿掉
-//                                            只留文字，不會把括號本身畫出來）。
+//                                            () 內建支援紅色強調，例如「丟書包.壓脖.(逼面壁吃飯)」）。
 //   左上=                                  → 只有人物框大字用：兩行，第一行對應「眉批小字」
 //                                            （例如「還有」），第二行對應「眉批大字」（() 內建
 //                                            支援黃色強調，例如「(拚反彈?)」）。
@@ -191,10 +190,9 @@ function parseTicketText(raw: string): ParsedTicket {
     if (block.startsWith("小標=")) {
       const text = block.replace(/^小標=\s*/, "").trim();
       if (result.templateId === "person-frame-big") {
-        // 「下方說明文字」這個欄位本身不支援 () 強調色（畫圖邏輯直接畫整串文字，沒有
-        // parseColorMarkup），把 () 拿掉只留文字，不然畫面上會把括號本身當成一般文字
-        // 畫出來，變成多餘的符號。
-        result.sub = text.replace(/[()]/g, "") || null;
+        // 「下方說明文字」重新對過 PSD 後改成支援 () 紅色強調（見 templates.ts 的說明），
+        // 這裡維持原樣不拿掉括號，讓套用時的 () 標記能正常轉成強調色。
+        result.sub = text || null;
       } else {
         result.tag = text;
       }

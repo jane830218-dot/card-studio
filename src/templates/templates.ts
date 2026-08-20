@@ -395,7 +395,7 @@ export const TEMPLATES: TemplateDef[] = [
       { key: "eyebrowBig", label: "眉批大字（() 內為黃色強調，例如「調電眼(心碎)」）", default: "調電眼(心碎)" },
       { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
       { key: "location", label: "地點", default: "基隆" },
-      { key: "sub", label: "下方說明文字", default: "當事人回應：詳情尚待查證" },
+      { key: "sub", label: "下方說明文字（() 內為紅色強調，例如「丟書包.壓脖.(逼面壁吃飯)」）", default: "當事人回應：詳情尚待查證" },
       { key: "title", label: "主標題（可換行，() 內為黃色強調，例如「師(抓頸抬童)!」）", default: "師(抓頸抬童)!\n控(準公幼涉虐)" },
       { key: "warn", label: "警語小字（可留空）", default: "兒虐保護專線:113" },
     ],
@@ -492,14 +492,18 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
+        // 重新抓過「人物框大字.psd」，這行文字圖層本身是兩種顏色的複合字（不是純色）：
+        // 用 psd-tools 讀 StyleRun 量出來，前半段（"丟書包.壓脖."）是 #655437（原本就在用的
+        // 那個棕色），後半段（"逼面壁吃飯"）是 #B90000（跟「地點」的紅色是同一個顏色）。
+        // 所以這裡改成跟其他欄位一樣支援 () 強調色標記，() 內的文字用 #B90000。
         name: "下方說明文字",
         draw: (ctx) => {
           const SUB_BLOCK_CENTER_Y = 485,
             SUB_X = 480,
             SAFE_RIGHT = 937;
-          drawStrokedText(ctx, (fields.sub as string) || "當事人回應：詳情尚待查證", SUB_X, SUB_BLOCK_CENTER_Y + 13.01, {
+          const segs = parseColorMarkup((fields.sub as string) || "當事人回應：詳情尚待查證", "#655437", "#B90000");
+          drawStrokedTextSegments(ctx, segs, SUB_X, SUB_BLOCK_CENTER_Y + 13.01, {
             font: "900 39.17px 'DFLiHeiBd', sans-serif",
-            fill: "#655437",
             align: "left",
             maxWidth: SAFE_RIGHT - SUB_X - 5,
             hScale: 1.0,
