@@ -196,8 +196,11 @@ function withWarnText(
         // (x=71,y=68)，這種情況左上角已經被地點佔走，警語小字要往下讓一行、放在地點下方；
         // 沒有主標色塊字，或這次沒顯示地點，左上角是空的，直接放上去、跟小標同一排對齊。
         const locationAtTopLeft = Boolean(fields.hasTitleBadge) && fields.showLocation !== false;
-        const x = locationAtTopLeft ? 71 : 37;
-        const y = locationAtTopLeft ? 104 : 49;
+        // 字首固定對齊地點「icon」的左邊界（icon x=37），不是地點文字的左邊界（x=71）；
+        // 沒有地點卡在左上角時，也用同一個 x，跟小標同一排對齊。
+        const x = 37;
+        // 104→92：跟地點的間距原本太大，改近一點（地點 baseline y=68，這裡拉近到只差 24px）。
+        const y = locationAtTopLeft ? 92 : 49;
         // 安全框範圍內自動壓縮寬度（跟小標/地點同一套 maxWidth 壓縮機制），文字不會超框。
         const maxWidth = locationAtTopLeft ? 400 : SAFE_RIGHT - x;
         drawStrokedText(ctx, fields.warn as string, x, y, {
