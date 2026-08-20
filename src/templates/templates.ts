@@ -91,8 +91,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
     {
       // 有加「主標色塊字」時，地點標的舊位置（左下、貼近標題）會被色塊字擋到，
       // 所以要照「紅色人物框02.psd」上移到左上角（不超出安全框，高度跟右邊小標對齊）。
-      // x 改成對齊「標題第一行」的字首（x=77），不是固定 37；圖示原本跟文字中間差 34px
-      // （71-37），維持同樣的間距往右移，圖示 x = 77 - 34 = 43。
+      // 圖示要連同文字整組一起對齊「標題第一行」的字首，所以圖示本身的 x 就是 77
+      // （不是文字對齊 77、圖示另外往左空出來），文字維持在圖示右邊 34px 處（見下方）。
       name: "地點 ICON（原始檔）",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
@@ -101,7 +101,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
           w = h * (icon ? icon.width / icon.height : 1);
         if (icon) {
           if (fields.hasTitleBadge) {
-            ctx.drawImage(icon, 43, 18, w, h);
+            ctx.drawImage(icon, 77, 18, w, h);
           } else {
             const ICON_BOTTOM_ADJUST = 4;
             ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
@@ -110,12 +110,12 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
-      // 同上，文字位置也比照「紅色人物框02.psd」上移。「字首」指文字本身的第一個字要
-      // 對齊「標題第一行」字首（x=77），圖示維持在文字左邊 34px 處（見上面圖示的 x=43）。
+      // 同上，文字位置也比照「紅色人物框02.psd」上移。圖示（見上）對齊標題字首 x=77，
+      // 文字維持在圖示右邊原本的 34px 間距，77+34=111。
       name: "地點標籤文字",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
-        const [x, y] = fields.hasTitleBadge ? [77, 50] : [116, 313];
+        const [x, y] = fields.hasTitleBadge ? [111, 50] : [116, 313];
         drawStrokedText(ctx, (fields.location as string) || "地點", x, y, {
           font: "900 36.8px 'MStiffHeiHK', sans-serif",
           fill: colors.locationText,
