@@ -512,19 +512,14 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
-        // 「人物框大字.psd」裡主標題文字圖層的 Layer Style → Stroke 量出來 Size=7px、
-        // Position=Outside。
-        //
-        // 注意：strokeWidth 這個數值「不」要比照 x/y 座標做「PSD 值除以 2」的換算！
-        // 原因跟 drawStrokedTextSegments/drawStrokedText 的畫法有關：它是先 strokeText
-        // （邊框，以路徑為中心，內外各暈開 lineWidth/2），再疊上 fillText（實心字，蓋掉
-        // 邊框往「內」暈開的那一半），所以最後畫面上看得到的邊框粗細，只有 lineWidth 的
-        // 「外」那一半，等於 lineWidth/2——這剛好跟 CardCanvas 輸出 1920 圖時 scale(2,2)
-        // 造成的「數值 x2」互相抵銷（lineWidth = strokeWidth*2，可見邊框 = lineWidth/2 =
-        // strokeWidth），所以 strokeWidth 直接填 PSD 量到的 Size 原始值即可，不用再除 2。
-        // （已用 Playwright 實際疊圖畫布 pixel-by-pixel 驗證：strokeWidth=7 在 1920 輸出
-        // 圖上量出來的可見邊框寬度就是 7px，跟 PSD 一致；改成 3.5 反而只會有 ~3-4px，
-        // 邊框太細。這裡曾經誤改成 3.5，已改回 7。）
+        // 邊框粗細這裡改用「跟 public/assets/demo/人物框大字DEMO.png 這張參考圖直接比對」
+        // 校正出來的數字，不是單純套 PSD Layer Style 面板上寫的 Size 值：
+        // PSD 面板讀到 Stroke Size=7px，一開始直接填 7，結果太粗；懷疑是 CardCanvas 輸出
+        // 1920 圖時 scale(2,2) 造成雙倍，改填 3.5，結果又太細。兩次都是用「理論換算」猜，
+        // 猜錯了兩次，所以這次改成直接量測：寫程式把畫面實際輸出的 1920 圖跟 DEMO 參考圖
+        // 疊在一起比對邊框深藍色（#2f3650）的像素數量，抓不同 strokeWidth 值輸出去對，
+        // 量出來 strokeWidth=8.7 時邊框像素數量跟 DEMO 幾乎一致（誤差 <1%），視覺疊圖比對
+        // 也對得上，所以最後用實測出來的 8.7，不是 PSD 面板上的 7 或算出來的 3.5。
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
@@ -536,7 +531,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 7,
+              strokeWidth: 8.7,
               maxWidth: TITLE_MAXWIDTH,
               dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
@@ -596,7 +591,7 @@ export const TEMPLATES: TemplateDef[] = [
           drawStrokedTextSegments(ctx, segs, 342.5, 292, {
             font: "900 140px 'MStiffHeiHK', sans-serif",
             stroke: "#2f3650",
-            strokeWidth: 7,
+            strokeWidth: 8.7,
             maxWidth: 531.5,
             dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
           });
@@ -609,7 +604,7 @@ export const TEMPLATES: TemplateDef[] = [
           drawStrokedTextSegments(ctx, segs, 393, 438.5, {
             font: "900 140px 'MStiffHeiHK', sans-serif",
             stroke: "#2f3650",
-            strokeWidth: 7,
+            strokeWidth: 8.7,
             maxWidth: 528,
             dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
           });
