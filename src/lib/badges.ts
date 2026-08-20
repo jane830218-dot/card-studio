@@ -141,7 +141,8 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textBox: { x: 90, y: 14, w: 386, h: 62 },
     textColor: "#ffffff",
     textStroke: "#fff002",
-    strokeWidth: 3,
+    // 妳說不要邊框，改成 0（drawCenteredText 裡 strokeWidth<=0 就完全不畫外框）。
+    strokeWidth: 0,
     fontSize: 64,
     capW: 47,
   },
