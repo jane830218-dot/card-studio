@@ -277,14 +277,24 @@ export async function regenerateBadgeImage(
   return drawImageBadge(shape, text || "文字", imageCfg, targetNaturalW);
 }
 
-// 「主標色塊字」（01/02/03，共用同一款圖形，只差顏色）加到畫布時的預設位置/大小：
-// 直接量「紅色人物框02.psd」裡實際擺放好的「主標上色塊字01」那組圖層 bbox
-// （1920 空間 x=160~644,y=555~644，也就是主標正上方那個位置），換算成 960 工作畫布：
-// 中心點 x=(160+644)/2/2=201，y=(555+644)/2/2=299.75，高度=(644-555)/2=44.5。
-// 用「中心點」而不是左上角存，是因為色塊實際寬度會依文字字數變動（見 drawImageBadge），
-// 用中心點反推左上角，不管文字多寡，色塊的視覺中心都能精準對到 PSD 量出來的位置。
-// 爆炸框(橫幅/緞帶款) 這個 PSD 裡沒有實際擺放的參考圖層，暫時維持原本「畫布置中」的預設值。
-export const TITLE_BADGE_DEFAULT_PLACEMENT = { centerX: 201, centerY: 300, height: 44.5 };
+// 各款裝飾色塊加到畫布時的預設位置/大小：直接量「紅色人物框02.psd」裡實際擺放好的
+// 參考圖層 bbox，換算成 960 工作畫布的「中心點＋高度」。用「中心點」而不是左上角存，
+// 是因為色塊實際寬度會依文字字數變動（見 drawImageBadge），用中心點反推左上角，
+// 不管文字多寡，色塊的視覺中心都能精準對到 PSD 量出來的位置。
+// - 主標色塊字（01/02/03，共用同一款圖形，只差顏色）：量「主標上色塊字01」那組圖層
+//   （1920 空間 x=160~644,y=555~644，主標正上方），中心點 x=(160+644)/2/2=201，
+//   y=(555+644)/2/2=299.75，高度=(644-555)/2=44.5。
+// - 爆炸框(橫幅款)：量「爆炸字01」那組圖層（1920 空間 x=147~652,y=518~663，同樣在主標
+//   正上方），中心點 x=(147+652)/2/2=199.75，y=(518+663)/2/2=295.25，
+//   高度=(663-518)/2=72.5。
+// 爆炸框(緞帶款) 這個 PSD 裡還沒有實際擺放的參考圖層，暫時維持原本「畫布置中」的預設值，
+// 之後有實際擺放範例的話再補上。
+export const BADGE_DEFAULT_PLACEMENT: Partial<Record<BadgeShape, { centerX: number; centerY: number; height: number }>> = {
+  "title-badge-01": { centerX: 201, centerY: 300, height: 44.5 },
+  "title-badge-02": { centerX: 201, centerY: 300, height: 44.5 },
+  "title-badge-03": { centerX: 201, centerY: 300, height: 44.5 },
+  "burst-h": { centerX: 200, centerY: 295, height: 72.5 },
+};
 
 // 幾個跟你版型現有配色一致的常用底色，快速點選用
 export const BADGE_COLOR_PRESETS: { label: string; color: string }[] = [
