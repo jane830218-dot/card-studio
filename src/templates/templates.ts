@@ -512,11 +512,8 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
-        // 邊框粗細：實際把這裡的輸出跟「紅／紫／藍／綠人物框」標題的輸出裁圖疊在一起比對
-        // 粗細（放大檢查邊框跟字內部空隙的比例），改成 2.5 才是視覺上真正對齊的粗細；
-        // 5 疊圖比對後其實還是明顯比較粗（字內部空隙被邊框吃掉不少）。
-        // （這個欄位之前反覆改過 7 → 3.5 → 7 → 8.7 → 5，都是用不同方式在猜，猜錯方向；
-        // 這次是唯一一次有實際疊圖比對過、確認跟人物框標題粗細一致的結果。）
+        // 邊框粗細：指定值，畫法是先畫邊框、再疊字蓋掉內側一半，這個數值換算到輸出圖上
+        // 剛好等於實際看到的邊框寬度（見這層 draw 邏輯本身不做額外縮放）。
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
@@ -528,7 +525,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 2.5,
+              strokeWidth: 5,
               maxWidth: TITLE_MAXWIDTH,
             });
           });
