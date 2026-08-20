@@ -169,6 +169,10 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
 }
 
 // 警語小字：位置跟著標題第一行的實際寬度走，四個緞帶框（紅/紫/藍/綠）共用同一套邏輯。
+// 標題第一行字數一多（超過6字，含color markup解析後、括號本身不算進去的實際顯示字數），
+// 警語小字接在標題後面同一排會被擠到安全框外面，所以改成搬到左上角：
+//   - 左上角沒被地點佔走時：跟小標同一排高度對齊
+//   - 有加主標色塊字（hasTitleBadge，這時地點會自動上移到左上角）：改放在地點下方，避免疊在一起
 function withWarnText(
   layers: CardLayer[],
   fields: FieldValues,
@@ -179,14 +183,40 @@ function withWarnText(
     name: "警語小字",
     draw: (ctx) => {
       if (!fields.warn) return;
+      const warnFont = "700 17px 'DFLiHei', sans-serif";
+      // 937→890：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布 x=900.5）往內收一點。
+      const SAFE_RIGHT = 890;
+
+      // parseColorMarkup 會把 () 本身吃掉、只留裡面的文字（見該函式），所以這裡算「字數」
+      // 也要先把 () 拿掉，才是畫面上實際看到的字數，跟標題顯示效果一致。
+      const title1RenderedLen = ((fields.title1 as string) || "").replace(/[()]/g, "").length;
+
+      if (title1RenderedLen > 6) {
+        // 「有加主標色塊字」時，地點標（見上面「地點標籤文字」那層）會自動上移到左上角
+        // (x=71,y=68)，這種情況左上角已經被地點佔走，警語小字要往下讓一行、放在地點下方；
+        // 沒有主標色塊字，或這次沒顯示地點，左上角是空的，直接放上去、跟小標同一排對齊。
+        const locationAtTopLeft = Boolean(fields.hasTitleBadge) && fields.showLocation !== false;
+        const x = locationAtTopLeft ? 71 : 37;
+        const y = locationAtTopLeft ? 104 : 49;
+        // 安全框範圍內自動壓縮寬度（跟小標/地點同一套 maxWidth 壓縮機制），文字不會超框。
+        const maxWidth = locationAtTopLeft ? 400 : SAFE_RIGHT - x;
+        drawStrokedText(ctx, fields.warn as string, x, y, {
+          font: warnFont,
+          fill: warnColor,
+          stroke: "#ffffff",
+          strokeWidth: 4,
+          align: "left",
+          maxWidth,
+        });
+        return;
+      }
+
+      // 標題第一行字數不多（6字以內）：維持原本邏輯，接在標題後面同一排。
       const title1Segs = parseColorMarkup(fields.title1 as string, colors.title1Base, colors.title1Accent);
       // 850→810：跟著「標題第一行」的 maxWidth 一起改，不然這裡量出來的寬度跟實際畫出來的對不上。
       const title1Width = measureRenderedWidth(ctx, title1Segs, "900 97.5px 'MStiffHeiHK', sans-serif", 0, 810);
-      const warnFont = "700 17px 'DFLiHei', sans-serif";
       ctx.font = warnFont;
       const warnTextWidth = ctx.measureText(fields.warn as string).width;
-      // 937→890：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布 x=900.5）往內收一點。
-      const SAFE_RIGHT = 890;
       let warnX = 77 + title1Width + 24;
       if (warnX + warnTextWidth > SAFE_RIGHT) warnX = SAFE_RIGHT - warnTextWidth;
       drawStrokedText(ctx, fields.warn as string, warnX, 417, {
