@@ -69,10 +69,11 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       // 正中間，畫完字（fillText）疊上去後只剩外側一半看得到，所以視覺上要跟 PSD
       // 的外擴邊框看起來一樣寬，實際 lineWidth 要設兩倍（4px，換算輸出解析度就是
       // PSD 的 8px≈視覺 4px 外擴邊框）。這就是之前「4px的邊不見了」一直沒抓對的原因。
-      // maxWidth 380→356：比照「顏色人物框安全框.png」量出來的新安全框（這四個緞帶框
-      // 專用，右邊界比舊版安全框窄很多，1920 空間 x=45~1801，換算 960 工作畫布是
-      // x=22.5~900.5），起點 x=536 + maxWidth 一定要留在 900 以內（多扣一點給邊框
-      // 外擴的視覺寬度），文字才不會超出安全框右邊界。
+      // 「紅／紫／藍／綠」四款統一改成用「安全框.png」這張（不要再各自比照不同的安全框檔案，
+      // 不然標準會亂）。量出來透明安全區 1920 空間 x=106~1841、y=45~1015，換算 960
+      // 工作畫布是 x=53~920.5、y=22.5~507.5，右邊界再往內收約 10px 當緩衝（給邊框外擴的
+      // 視覺寬度留空間），得到這裡統一使用的 SAFE_RIGHT=910。
+      // 起點 x=536 + maxWidth 抓在 910 以內：910-536=374，再留一點緩衝抓 366。
       name: "頂部標籤文字",
       draw: (ctx) => {
         const lines = (fields.tag as string).split("\n");
@@ -83,7 +84,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
             stroke: "#ffffff",
             strokeWidth: 4,
             letterSpacing: 1.5,
-            maxWidth: 356,
+            maxWidth: 366,
           });
         });
       },
@@ -91,8 +92,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
     {
       // 有加「主標色塊字」時，地點標的舊位置（左下、貼近標題）會被色塊字擋到，
       // 所以要照「紅色人物框02.psd」上移到左上角（不超出安全框，高度跟右邊小標對齊）。
-      // 圖示要連同文字整組一起對齊「標題第一行」的字首，所以圖示本身的 x 就是 77
-      // （不是文字對齊 77、圖示另外往左空出來），文字維持在圖示右邊 34px 處（見下方）。
+      // 圖示要連同文字整組一起對齊「標題第一行」的字首，所以圖示本身的 x 就是跟標題第一行
+      // 同一個值（57，見下面「標題第一行」那層的說明），文字維持在圖示右邊 34px 處。
       name: "地點 ICON（原始檔）",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
@@ -101,7 +102,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
           w = h * (icon ? icon.width / icon.height : 1);
         if (icon) {
           if (fields.hasTitleBadge) {
-            ctx.drawImage(icon, 77, 18, w, h);
+            ctx.drawImage(icon, 57, 18, w, h);
           } else {
             const ICON_BOTTOM_ADJUST = 4;
             ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
@@ -110,12 +111,12 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
-      // 同上，文字位置也比照「紅色人物框02.psd」上移。圖示（見上）對齊標題字首 x=77，
-      // 文字維持在圖示右邊原本的 34px 間距，77+34=111。
+      // 同上，文字位置也比照「紅色人物框02.psd」上移。圖示（見上）對齊標題第一行字首 x=57，
+      // 文字維持在圖示右邊原本的 34px 間距，57+34=91。
       name: "地點標籤文字",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
-        const [x, y] = fields.hasTitleBadge ? [111, 50] : [116, 313];
+        const [x, y] = fields.hasTitleBadge ? [91, 50] : [116, 313];
         drawStrokedText(ctx, (fields.location as string) || "地點", x, y, {
           font: "900 36.8px 'MStiffHeiHK', sans-serif",
           fill: colors.locationText,
@@ -126,26 +127,30 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
-      // maxWidth 850→810：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布
-      // x=900.5），起點 x=77，扣掉邊框外擴視覺寬度後留在安全框內。
+      // 重新比對「紅色人物框.psd」跟「紅色人物框02.psd」（兩份最新版本文字起點一致），
+      // 量出來標題第一行文字 bbox 左邊界 1920 空間 x=113，換算 960 工作畫布 x=56.5，
+      // 取整數 57（原本 77 太靠右，要往前移）。maxWidth 也跟著統一的安全框重算：
+      // 910（SAFE_RIGHT，見「頂部標籤文字」的說明）-57=853，取 850。
       name: "標題第一行",
       draw: (ctx) => {
         drawStrokedTextSegments(
           ctx,
           parseColorMarkup(fields.title1 as string, colors.title1Base, colors.title1Accent),
-          77,
+          57,
           415,
           {
             font: "900 97.5px 'MStiffHeiHK', sans-serif",
             stroke: colors.title1Stroke,
             strokeWidth: 7,
-            maxWidth: 810,
+            maxWidth: 850,
           }
         );
       },
     },
     {
-      // maxWidth 640→605：同上，比照新安全框右邊界，起點 x=284。
+      // PSD 量出來標題第二行 bbox 左邊界 1920 空間 x=562，換算 960 是 281，
+      // 跟原本用的 284 幾乎一樣（誤差在四捨五入範圍內），維持不動，只更新 maxWidth：
+      // 910-284=626，取 620。
       name: "標題第二行",
       draw: (ctx) => {
         drawStrokedTextSegments(
@@ -157,7 +162,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
             font: "900 80px 'MStiffHeiHK', sans-serif",
             stroke: colors.title2Stroke,
             strokeWidth: 5,
-            maxWidth: 605,
+            maxWidth: 620,
           }
         );
       },
@@ -181,8 +186,9 @@ function withWarnText(
     draw: (ctx) => {
       if (!fields.warn) return;
       const warnFont = "700 17px 'DFLiHei', sans-serif";
-      // 937→890：比照「顏色人物框安全框.png」新安全框右邊界（960 工作畫布 x=900.5）往內收一點。
-      const SAFE_RIGHT = 890;
+      // 統一改用「安全框.png」右邊界（見「頂部標籤文字」的說明，SAFE_RIGHT=910），
+      // 警語小字跟其他文字欄位共用同一個安全框標準，不要再各自比照不同的檔案。
+      const SAFE_RIGHT = 910;
 
       // parseColorMarkup 會把 () 本身吃掉、只留裡面的文字（見該函式），所以這裡算「字數」
       // 也要先把 () 拿掉，才是畫面上實際看到的字數，跟標題顯示效果一致。
@@ -193,9 +199,9 @@ function withWarnText(
         // (x=71,y=50)，這種情況左上角已經被地點佔走，警語小字要往下讓一行、放在地點下方；
         // 沒有主標色塊字，或這次沒顯示地點，左上角是空的，直接放上去、跟小標同一排對齊。
         const locationAtTopLeft = Boolean(fields.hasTitleBadge) && fields.showLocation !== false;
-        // 字首改成對齊「標題第一行」的字首（x=77），跟地點 icon 的新 x 一致；
+        // 字首改成對齊「標題第一行」的字首（x=57，隨主標一起往前移），跟地點 icon 的新 x 一致；
         // 沒有地點卡在左上角時，也用同一個 x。
-        const x = 77;
+        const x = 57;
         // 地點的位置跟著 PSD 一起上移了（baseline 68→50），警語小字維持原本跟地點差
         // 24px 的間距，跟著一起上移：92→74。沒有地點卡在左上角的情況也要一起上移
         // （原本對齊小標 y=49，跟著同樣的 18px 上移幅度調成 31，不要只有「有地點」時才動）。
@@ -215,11 +221,11 @@ function withWarnText(
 
       // 標題第一行字數不多（6字以內）：維持原本邏輯，接在標題後面同一排。
       const title1Segs = parseColorMarkup(fields.title1 as string, colors.title1Base, colors.title1Accent);
-      // 850→810：跟著「標題第一行」的 maxWidth 一起改，不然這裡量出來的寬度跟實際畫出來的對不上。
-      const title1Width = measureRenderedWidth(ctx, title1Segs, "900 97.5px 'MStiffHeiHK', sans-serif", 0, 810);
+      // 跟著「標題第一行」的 maxWidth 一起改（現在是 850），不然這裡量出來的寬度跟實際畫出來的對不上。
+      const title1Width = measureRenderedWidth(ctx, title1Segs, "900 97.5px 'MStiffHeiHK', sans-serif", 0, 850);
       ctx.font = warnFont;
       const warnTextWidth = ctx.measureText(fields.warn as string).width;
-      let warnX = 77 + title1Width + 24;
+      let warnX = 57 + title1Width + 24;
       if (warnX + warnTextWidth > SAFE_RIGHT) warnX = SAFE_RIGHT - warnTextWidth;
       drawStrokedText(ctx, fields.warn as string, warnX, 417, {
         font: warnFont,
