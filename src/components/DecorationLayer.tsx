@@ -69,7 +69,11 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
           // 預設用「紅色人物框02.psd」裡實際擺放的中心點反推左上角（見 badges.ts 說明），
           // 不管文字多寡改變了色塊寬度，視覺中心都精準對在 PSD 量出來的位置上，
           // 不用再像以前一樣每次都要自己從畫布正中央拖過去。
-          defaultLeft = placement.centerX - targetW / 2;
+          // 字數太多、色塊被拉得很寬時，中心點固定不動會讓左邊（或右邊）跑到畫布外面看不到，
+          // 這裡跟下面「沒有 PSD 參考」的邏輯一樣留個 margin 頂住，至少左邊圓弧/星芒圖案跟
+          // 文字開頭看得到，使用者還是可以再自己拖曳調整位置。
+          const margin = 16;
+          defaultLeft = Math.max(margin, Math.min(PREVIEW_W - targetW - margin, placement.centerX - targetW / 2));
           defaultTop = placement.centerY - targetH / 2;
         } else {
           // 這份 PSD 裡還沒有實際擺放的參考圖層可以量，維持原本「畫布置中」的預設邏輯。

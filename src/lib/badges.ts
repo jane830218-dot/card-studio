@@ -91,6 +91,13 @@ interface ImageBadgeConfig {
   // 拉伸多少都還是同一個純色矩形，不需要另外保留一塊右端蓋）。
   // 純長方形（沒有圓弧/圖案）或整張都是不規則形狀就不設定，維持整張圖等比例拉伸的舊行為。
   capW?: number | { left: number; right: number };
+  // 有 capW 的款式，文字水平位置預設用「center」：置中在（capL~canvasW-capR）這段
+  // 可伸縮區域的正中央（主標色塊字用這個——兩端蓋寬度相等，文字置中剛好對稱）。
+  // 「left」：文字左邊界固定錨在 textBox.x（不管拉多寬都不會動），只有沒有端蓋、
+  // 可以直接伸展的那一邊跟著文字變長而伸展——爆炸框緞帶款用這個，因為實測 PSD 裡
+  // 文字本來就疊在左邊星芒圖案尾端一小段（textBox.x=84，比 capL=160 還靠左），
+  // 不是完全避開星芒圖案置中在右邊矩形正中央。
+  textAnchor?: "center" | "left";
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -109,11 +116,18 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     fontSize: 59,
   },
   // 02 爆炸框(緞帶款)：PSD 裡「爆炸字02」群組是 455×143，跟這張圖的 453×139 差一點點，
-  // 文字框座標照比例縮放過（x=84, y=25, w=354, h=55）
+  // 文字框座標照比例縮放過（x=84, y=25, w=354, h=55）——這組 x=84 其實就是直接從你在
+  // PSD 裡實際打的文字「秘書誆情糾葛」量出來的左邊界（換算回這張圖的原始大小），量出來
+  // 整段文字剛好精準對到 x=84~438（跟 textBox.w=354 完全吻合），代表這是「文字疊在星芒
+  // 圖案尾端一小段」的真實設計位置，不是完全避開星芒圖案、置中在右邊矩形正中央。
   // 你說前面的爆炸星芒圖案以後都不要變形，只能拉寬後面的方形色塊（比照主標色塊字的做法）：
   // 用 PIL 掃過 burst-ribbon.png 每一欄的透明度，量出星芒圖案在 x=0~159 這段（星芒最右邊的
   // 尖刺剛好在 x=159 結束），從 x=160 開始每一欄的形狀都完全一致，是單純的矩形色塊，
   // 所以左端蓋固定量 160px、右邊不用留端蓋（純色矩形，拉多寬都還是同一個矩形，設 0 即可）。
+  // 你說字首要往前移 2 個字：改成 textAnchor:"left"，文字左邊界直接固定錨在 textBox.x=84
+  // （原本 capW 兩端置中的算法會把文字硬推到 x≈189，完全避開星芒圖案，跟這裡量出來的
+  // 真實位置差了快 2 個字，跟你的回饋方向和幅度吻合），不管拉多寬左邊界都不動，
+  // 只有右邊（沒有端蓋、可以直接伸展的那邊）跟著文字變長而伸展。
   "burst-ribbon": {
     assetPath: `${BASE}assets/badges/burst-ribbon.png`,
     naturalW: 453,
@@ -124,6 +138,7 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     strokeWidth: 5,
     fontSize: 59,
     capW: { left: 160, right: 0 },
+    textAnchor: "left",
   },
   // 03/04/05 主標色塊字：放在主標上方的色塊字，跟裝飾色塊一樣手動加到畫布上、自己拖到主標上面。
   // 素材是你「裝飾色塊.psd」裡「主標上色塊字01/02/03」三款，都是從 PSD 原圖去背裁切出來的，
@@ -268,16 +283,27 @@ async function drawImageBadge(
     // textBox x（本身就跟端蓋有一段設計上的固定間距）也一起乘上拉寬倍率，結果字數一多、
     // 拉寬倍率變大時，這段「跟端蓋的固定間距」也跟著被放大，端蓋到文字之間的留白就會遠遠
     // 超過我們想要的 0.5 字元、而且倍率愈大留白愈誇張。
-    // 正確做法：中間段只要能塞下「文字＋左右各 0.5 字元留白」就好，這樣不管拉多寬，
-    // 端蓋到文字的留白永遠精準等於 paddingEachSide，不會跟著拉寬倍率一起放大。
-    // 文字置中的位置要落在「中間可伸縮段」的正中央，不是整張圖的正中央——兩端蓋等寬
-    // （例如主標色塊字）時兩者算出來一樣，但像緞帶款左邊端蓋 160、右邊端蓋 0 這種不對稱
-    // 的情況，如果錯用「整張圖正中央」，文字會被星芒圖案那塊多出來的寬度推偏，跟中間
-    // 那塊實際看到的矩形區域對不齊。
     const { left: capL, right: capR } = resolveCapWidths(cfg.capW, cfg.naturalW);
-    const minCanvasW = capL + capR + neededWidth;
-    canvasW = Math.max(Math.ceil(minCanvasW), Math.ceil(forceMinW ?? 0));
-    cx = (canvasW + capL - capR) / 2;
+    if (cfg.textAnchor === "left") {
+      // 左邊固定錨點模式（爆炸框緞帶款用）：文字左邊界固定在 textBox.x（PSD 實測的真實
+      // 文字位置，本來就疊在左邊星芒圖案尾端一小段，見上面 IMAGE_BADGES 裡的說明），
+      // 不管拉多寬這個錨點都不會動；只有沒有端蓋、可以直接伸展的那一邊（這裡是右邊）
+      // 跟著文字變長而伸展，canvasW 至少要能塞下「錨點+文字+右邊 0.5 字元留白」，
+      // 也至少要塞得下左右兩個端蓋（不然端蓋會互相擠壓變形）。
+      const leftAnchor = x;
+      const minCanvasW = Math.max(leftAnchor + textWidth + paddingEachSide, capL + capR);
+      canvasW = Math.max(Math.ceil(minCanvasW), Math.ceil(forceMinW ?? 0));
+      cx = leftAnchor + textWidth / 2;
+    } else {
+      // 置中模式（主標色塊字用，兩端蓋寬度相等）：中間段只要能塞下「文字＋左右各 0.5 字元
+      // 留白」就好，這樣不管拉多寬，端蓋到文字的留白永遠精準等於 paddingEachSide，不會
+      // 跟著拉寬倍率一起放大。文字置中的位置要落在「中間可伸縮段」的正中央，不是整張圖
+      // 的正中央——兩端蓋等寬時兩者算出來一樣，但左右端蓋不等寬時，如果錯用「整張圖正
+      // 中央」，文字會被比較寬的那一端多出來的寬度推偏，跟中間那塊實際看到的矩形區域對不齊。
+      const minCanvasW = capL + capR + neededWidth;
+      canvasW = Math.max(Math.ceil(minCanvasW), Math.ceil(forceMinW ?? 0));
+      cx = (canvasW + capL - capR) / 2;
+    }
   } else {
     // 沒有端蓋（不規則爆炸框外框、或本身就是直角矩形的款式）：沒有「固定寬度端蓋」
     // 這個問題，維持原本整張圖等比例縮放、文字安全區 x/w 跟著等比例移動的算法。
