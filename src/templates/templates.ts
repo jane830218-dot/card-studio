@@ -200,8 +200,9 @@ function withWarnText(
         // 沒有地點卡在左上角時，也用同一個 x，跟小標同一排對齊。
         const x = 37;
         // 地點的位置跟著 PSD 一起上移了（baseline 68→50），警語小字維持原本跟地點差
-        // 24px 的間距，跟著一起上移：92→74。
-        const y = locationAtTopLeft ? 74 : 49;
+        // 24px 的間距，跟著一起上移：92→74。沒有地點卡在左上角的情況也要一起上移
+        // （原本對齊小標 y=49，跟著同樣的 18px 上移幅度調成 31，不要只有「有地點」時才動）。
+        const y = locationAtTopLeft ? 74 : 31;
         // 安全框範圍內自動壓縮寬度（跟小標/地點同一套 maxWidth 壓縮機制），文字不會超框。
         const maxWidth = locationAtTopLeft ? 400 : SAFE_RIGHT - x;
         drawStrokedText(ctx, fields.warn as string, x, y, {
