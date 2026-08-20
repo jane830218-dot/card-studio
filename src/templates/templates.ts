@@ -262,7 +262,8 @@ export const TEMPLATES: TemplateDef[] = [
         tagBase: "#000000",
         tagAccent: "#6131DD",
         title1Base: "#FFFFFF",
-        title1Accent: "#FFF002",
+        // 跟 PSD 的 Color Picker 核對過：強調色是純黃 #FFFF00（原本 #FFF002 差一點點）。
+        title1Accent: "#FFFF00",
         title1Stroke: "#4C29DB",
         title2Base: "#000000",
         title2Accent: "#6131DD",
