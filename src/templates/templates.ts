@@ -525,7 +525,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 5,
+              strokeWidth: 6,
               maxWidth: TITLE_MAXWIDTH,
             });
           });
