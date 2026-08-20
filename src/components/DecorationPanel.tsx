@@ -16,6 +16,18 @@ export default function DecorationPanel({ decorationRef }: Props) {
     decorationRef.current?.addBadge(shape, text.trim() || "文字", color);
   };
 
+  const handleUploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      decorationRef.current?.addCustomImage(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    // 選完就清空 input value，不然同一個檔案想再上傳一次（例如刪掉後想重加）不會觸發 onChange。
+    e.target.value = "";
+  };
+
   return (
     <div>
       <div className="section-title">裝飾色塊</div>
@@ -59,9 +71,21 @@ export default function DecorationPanel({ decorationRef }: Props) {
       <button className="btn primary" onClick={handleAdd} style={{ width: "100%", justifyContent: "center" }}>
         ＋ 新增色塊到畫布
       </button>
+
+      <div className="section-title" style={{ marginTop: 20 }}>
+        上傳圖片裝飾
+      </div>
+      <div className="hint" style={{ marginBottom: 8 }}>
+        地圖、對話框組合、直式文字色塊…這些不固定的內容，在 Photoshop 裡自己去背、輸出成透明底 PNG，上傳後就會跟上面的色塊一樣可以直接拖曳移動／旋轉／縮放，最後跟版型一起合成輸出。
+      </div>
+      <label className="btn" style={{ width: "100%", justifyContent: "center", cursor: "pointer" }}>
+        ＋ 上傳圖片到畫布
+        <input type="file" accept="image/*" onChange={handleUploadImage} style={{ display: "none" }} />
+      </label>
+
       <button
         className="btn"
-        style={{ width: "100%", justifyContent: "center", marginTop: 6 }}
+        style={{ width: "100%", justifyContent: "center", marginTop: 12 }}
         onClick={() => decorationRef.current?.clearAll()}
       >
         清空所有色塊

@@ -9,6 +9,11 @@ import { PREVIEW_W, PREVIEW_H } from "./CardCanvas";
 
 export interface DecorationLayerHandle {
   addBadge: (shape: BadgeShape, text: string, color: string, opts?: { left?: number; top?: number }) => void;
+  // 「上傳圖片裝飾」：不固定的客製化內容（地圖、對話框組合、直式文字色塊…）在 Photoshop
+  // 裡自己去背輸出成透明底 PNG，上傳進來直接當一個可拖曳/縮放/旋轉的圖層疊到畫布上，
+  // 不需要我們另外寫程式碼支援新形狀——跟 addBadge 共用同一套 Fabric 互動邏輯，
+  // 差別只在圖片本身是使用者上傳的，不是我們產生的。
+  addCustomImage: (dataUrl: string, opts?: { left?: number; top?: number }) => void;
   clearAll: () => void;
   getFabricCanvas: () => FabricCanvas | null;
 }
@@ -102,6 +107,49 @@ const DecorationLayer = forwardRef<DecorationLayerHandle>((_props, ref) => {
         // （不然拖那些會單獨拉寬或拉高、破壞比例）。Fabric 預設拖角落控制點就是
         // 等比例縮放（除非按住 shift），這樣整個色塊（含文字、圓角）會一起放大縮小，
         // 不會變形。旋轉控制點照常保留。
+        img.setControlsVisibility({
+          mt: false,
+          mb: false,
+          ml: false,
+          mr: false,
+          tl: true,
+          tr: true,
+          bl: true,
+          br: true,
+          mtr: true,
+        });
+        fc.add(img);
+        fc.setActiveObject(img);
+        fc.requestRenderAll();
+      });
+    },
+
+    addCustomImage: (dataUrl, opts) => {
+      const fc = fabricRef.current;
+      if (!fc) return;
+      FabricImage.fromURL(dataUrl).then((img) => {
+        const naturalW = img.width || 1;
+        const naturalH = img.height || 1;
+        // 使用者自己上傳的圖片大小完全不固定（有可能是一張很大的地圖截圖，也有可能是
+        // 一個很小的對話框圖案），預設先縮到不超過畫布的一半寬/一半高（取比較嚴格的那個
+        // 比例），避免一上傳整張畫布就被塞滿；如果原圖本身就比這個範圍小，不放大，
+        // 維持原始大小，細節才不會模糊。加進來之後使用者可以再自己拖曳調整大小/位置。
+        const MAX_W = PREVIEW_W * 0.5;
+        const MAX_H = PREVIEW_H * 0.5;
+        const scale = Math.min(1, MAX_W / naturalW, MAX_H / naturalH);
+        const targetW = naturalW * scale;
+        const targetH = naturalH * scale;
+        const defaultLeft = (PREVIEW_W - targetW) / 2;
+        const defaultTop = (PREVIEW_H - targetH) / 2;
+        img.set({
+          originX: "left",
+          originY: "top",
+          left: opts?.left ?? defaultLeft,
+          top: opts?.top ?? defaultTop,
+          scaleX: scale,
+          scaleY: scale,
+        });
+        // 跟 addBadge 一樣：只留四個角落的控制點，等比例縮放，不會被拉變形；旋轉控制點保留。
         img.setControlsVisibility({
           mt: false,
           mb: false,
