@@ -56,6 +56,9 @@ interface ParsedTicket {
   templateId: string | null;
   colorKeyword: string | null;
   frameNumber: string | null;
+  /** 判斷顏色/框號那一行的原始文字，例如「紅色人物框　框12飛車逮通緝」，
+   *  拿來當下載檔名用（比版型ID+時間戳記更容易辨識是哪張工單）。 */
+  rawTitleLine: string | null;
   tag: string | null;
   title1: string | null;
   title2: string | null;
@@ -76,6 +79,7 @@ function parseTicketText(raw: string): ParsedTicket {
     templateId: null,
     colorKeyword: null,
     frameNumber: null,
+    rawTitleLine: null,
     tag: null,
     title1: null,
     title2: null,
@@ -190,6 +194,8 @@ function parseTicketText(raw: string): ParsedTicket {
       if (colorMatch || frameMatch) {
         if (colorMatch) result.colorKeyword = colorMatch[1];
         if (frameMatch) result.frameNumber = frameMatch[1];
+        // 保留這行原始文字（例如「紅色人物框　框12飛車逮通緝」），下載檔名要用。
+        result.rawTitleLine = block;
         i++;
         continue;
       }
@@ -216,6 +222,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
   const [preview, setPreview] = useState<ParsedTicket | null>(null);
   const setTemplate = useEditorStore((s) => s.setTemplate);
   const setField = useEditorStore((s) => s.setField);
+  const setExportTitle = useEditorStore((s) => s.setExportTitle);
 
   const handleParse = () => {
     setPreview(parseTicketText(raw));
@@ -236,6 +243,9 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     // 有主標色塊字又有地點標時，地點標要自動上移到左上角（紅色人物框02.psd 的規範），
     // 不用她自己再手動勾一次。
     setField("hasTitleBadge", Boolean(preview.titleBadgeText && preview.location));
+    // 下載檔名改用工單裡「顏色人物框 框N ...」那一行原文（例如「紅色人物框　框12飛車逮通緝」），
+    // 比原本的「版型ID-時間戳記」更容易辨識是哪張工單。
+    setExportTitle(preview.rawTitleLine);
 
     // 色塊只負責生成內容，位置用預設值堆疊在畫面中間，套用完自己拖到對的地方，
     // 顏色也先給一個預設紅色，想換色直接在右側「裝飾色塊」面板點色盤即可。

@@ -26,10 +26,17 @@ export default function Editor() {
     const decorationCanvas = decorationRef.current?.getFabricCanvas();
     const exportCtx = exportCanvas.getContext("2d");
 
+    // 檔名優先用「貼上工單文字自動生成」解析出來的標題（例如「紅色人物框　框12飛車逮通緝」），
+    // 比版型ID+時間戳記更容易辨識是哪張工單；沒貼過工單、純手動編輯的話，退回舊命名法，
+    // 並且把 Windows/macOS 檔名不能用的符號換成空格，避免下載失敗。
+    const exportTitle = useEditorStore.getState().exportTitle;
+    const sanitizedTitle = exportTitle?.replace(/[\\/:*?"<>|]/g, " ").trim();
+    const filenameBase = sanitizedTitle || `${tpl}-${Date.now()}`;
+
     const finishDownload = () => {
       const a = document.createElement("a");
       a.href = exportCanvas.toDataURL("image/png");
-      a.download = `${tpl}-${Date.now()}.png`;
+      a.download = `${filenameBase}.png`;
       a.click();
     };
 

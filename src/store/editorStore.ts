@@ -21,6 +21,10 @@ interface EditorState {
   activeLayerIdx: number | null;
   showSafeFrame: boolean;
   layers: CardLayer[];
+  /** 下載檔名要用的標題：從「貼上工單文字自動生成」解析出來的原始那行文字
+   *  （例如「紅色人物框　框12飛車逮通緝」），套用工單後會自動帶入；
+   *  沒有貼工單、純手動編輯的話維持 null，下載時退回舊的「版型ID-時間戳記」命名。 */
+  exportTitle: string | null;
   setTemplate: (id: string) => void;
   setField: (key: string, value: string | boolean) => void;
   setRawUploadedImg: (img: HTMLImageElement | null) => void;
@@ -29,6 +33,7 @@ interface EditorState {
   toggleSafeFrame: () => void;
   loadCard: (templateId: string, fieldValues: FieldValues) => void;
   setLayers: (layers: CardLayer[]) => void;
+  setExportTitle: (title: string | null) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -39,6 +44,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   activeLayerIdx: null,
   showSafeFrame: false,
   layers: [],
+  exportTitle: null,
+  setExportTitle: (title) => set({ exportTitle: title }),
   setLayers: (layers) => set({ layers }),
   setTemplate: (id) =>
     set({
