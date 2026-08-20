@@ -83,10 +83,14 @@ interface ImageBadgeConfig {
   textStroke: string;
   strokeWidth: number;
   fontSize: number;
-  // 圓角/圓弧「端蓋」寬度（以原始底圖大小為基準）：拉寬底圖時，左右各留這個寬度的區塊
-  // 原封不動複製（不拉伸），只拉伸中間那段，這樣不管拉多寬，兩端的圓弧都不會變形。
-  // 純長方形（沒有圓弧）或不規則爆炸框形狀就不設定，維持整張圖等比例拉伸的舊行為。
-  capW?: number;
+  // 「端蓋」寬度（以原始底圖大小為基準）：拉寬底圖時，端蓋區塊原封不動複製（不拉伸），
+  // 只拉伸中間到另一端之間那段，這樣不管拉多寬，端蓋本身都不會變形。
+  // 傳一個數字＝左右兩端蓋同寬（例如主標色塊字左右都是圓角，兩端都要保留）；
+  // 傳 { left, right }＝左右端蓋可以不同寬，右邊填 0 就是「右邊沒有端蓋、直接拉伸到底」
+  // （例如爆炸框緞帶款：左邊是不規則的爆炸星芒圖案要整個原封不動保留，右邊是純色矩形，
+  // 拉伸多少都還是同一個純色矩形，不需要另外保留一塊右端蓋）。
+  // 純長方形（沒有圓弧/圖案）或整張都是不規則形狀就不設定，維持整張圖等比例拉伸的舊行為。
+  capW?: number | { left: number; right: number };
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -106,6 +110,10 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
   },
   // 02 爆炸框(緞帶款)：PSD 裡「爆炸字02」群組是 455×143，跟這張圖的 453×139 差一點點，
   // 文字框座標照比例縮放過（x=84, y=25, w=354, h=55）
+  // 你說前面的爆炸星芒圖案以後都不要變形，只能拉寬後面的方形色塊（比照主標色塊字的做法）：
+  // 用 PIL 掃過 burst-ribbon.png 每一欄的透明度，量出星芒圖案在 x=0~159 這段（星芒最右邊的
+  // 尖刺剛好在 x=159 結束），從 x=160 開始每一欄的形狀都完全一致，是單純的矩形色塊，
+  // 所以左端蓋固定量 160px、右邊不用留端蓋（純色矩形，拉多寬都還是同一個矩形，設 0 即可）。
   "burst-ribbon": {
     assetPath: `${BASE}assets/badges/burst-ribbon.png`,
     naturalW: 453,
@@ -115,6 +123,7 @@ const IMAGE_BADGES: Record<BadgeShape, ImageBadgeConfig> = {
     textStroke: "#ac0701",
     strokeWidth: 5,
     fontSize: 59,
+    capW: { left: 160, right: 0 },
   },
   // 03/04/05 主標色塊字：放在主標上方的色塊字，跟裝飾色塊一樣手動加到畫布上、自己拖到主標上面。
   // 素材是你「裝飾色塊.psd」裡「主標上色塊字01/02/03」三款，都是從 PSD 原圖去背裁切出來的，
@@ -174,32 +183,59 @@ function loadBadgeImage(shape: BadgeShape, cfg: ImageBadgeConfig): Promise<HTMLI
   });
 }
 
-// 把底圖畫到目標寬度 targetW：如果有設定 capW（兩端圓弧寬度），左右兩端各裁一塊「原封不動」貼上去，
-// 中間那一段才拉伸／壓縮，這樣不管拉多寬，兩端的圓弧形狀都不會被拉變形；
-// 沒有設定 capW（例如爆炸框的不規則外框、或本身就是直角矩形）就維持整張圖等比例縮放的舊行為。
+// capW 可能是「數字」（左右端蓋同寬）或「{ left, right }」（左右端蓋各自不同寬，
+// 某一邊填 0 就是那一邊沒有端蓋），這裡統一換算成 { left, right }，並確保兩端蓋
+// 加起來不會超過原圖寬度（不然會裁到負寬度、畫面壞掉）。
+function resolveCapWidths(
+  capW: number | { left: number; right: number } | undefined,
+  naturalW: number
+): { left: number; right: number } {
+  if (!capW) return { left: 0, right: 0 };
+  if (typeof capW === "number") {
+    const c = Math.max(0, Math.min(capW, Math.floor(naturalW / 2)));
+    return { left: c, right: c };
+  }
+  let left = Math.max(0, capW.left);
+  let right = Math.max(0, capW.right);
+  if (left + right > naturalW) {
+    // 兩端蓋加起來比原圖還寬：等比例縮回去，避免裁出負寬度。
+    const scale = naturalW / (left + right);
+    left = Math.floor(left * scale);
+    right = Math.floor(right * scale);
+  }
+  return { left, right };
+}
+
+// 把底圖畫到目標寬度 targetW：如果有設定 capW（端蓋寬度，左右可以不同寬），端蓋部分各裁一塊
+// 「原封不動」貼上去，中間那一段才拉伸／壓縮，這樣不管拉多寬，端蓋本身都不會被拉變形；
+// 沒有設定 capW（例如爆炸框橫幅款的不規則外框、或本身就是直角矩形）就維持整張圖等比例縮放的舊行為。
 function drawCapPreservingStretch(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
   naturalW: number,
   naturalH: number,
   targetW: number,
-  capW: number | undefined
+  capW: number | { left: number; right: number } | undefined
 ) {
-  const cap = capW ? Math.min(capW, Math.floor(naturalW / 2)) : 0;
-  if (cap <= 0) {
+  const { left: capL, right: capR } = resolveCapWidths(capW, naturalW);
+  if (capL <= 0 && capR <= 0) {
     ctx.drawImage(img, 0, 0, targetW, naturalH);
     return;
   }
-  const midSrcW = naturalW - cap * 2;
-  const midDstW = Math.max(0, targetW - cap * 2);
-  // 左端圓弧：原尺寸複製，完全不拉伸
-  ctx.drawImage(img, 0, 0, cap, naturalH, 0, 0, cap, naturalH);
+  const midSrcW = naturalW - capL - capR;
+  const midDstW = Math.max(0, targetW - capL - capR);
+  // 左端蓋：原尺寸複製，完全不拉伸
+  if (capL > 0) {
+    ctx.drawImage(img, 0, 0, capL, naturalH, 0, 0, capL, naturalH);
+  }
   // 中間直段：只有這裡跟著拉寬/壓窄
   if (midSrcW > 0 && midDstW > 0) {
-    ctx.drawImage(img, cap, 0, midSrcW, naturalH, cap, 0, midDstW, naturalH);
+    ctx.drawImage(img, capL, 0, midSrcW, naturalH, capL, 0, midDstW, naturalH);
   }
-  // 右端圓弧：原尺寸複製，完全不拉伸
-  ctx.drawImage(img, naturalW - cap, 0, cap, naturalH, targetW - cap, 0, cap, naturalH);
+  // 右端蓋：原尺寸複製，完全不拉伸（右端蓋寬度是 0 的話，這裡自然不會畫）
+  if (capR > 0) {
+    ctx.drawImage(img, naturalW - capR, 0, capR, naturalH, targetW - capR, 0, capR, naturalH);
+  }
 }
 
 // 核心繪製：可以指定「至少要多寬」（forceMinW，通常來自使用者手動拖曳想要的寬度），
@@ -227,17 +263,21 @@ async function drawImageBadge(
   let canvasW: number;
   let cx: number;
   if (cfg.capW) {
-    // 有端蓋圓弧的款式（例如主標色塊字）：兩端圓弧本身寬度固定、永遠不會被拉伸，
-    // 只有中間那段會伸縮。之前的算法是把 PSD 量出來的 textBox x（本身就跟端蓋有一段
-    // 設計上的固定間距）也一起乘上拉寬倍率，結果字數一多、拉寬倍率變大時，
-    // 這段「跟端蓋的固定間距」也跟著被放大，兩端圓弧到文字之間的留白就會遠遠超過
-    // 我們想要的 0.5 字元、而且倍率愈大留白愈誇張。
-    // 正確做法：兩端圓弧寬度相等，中間段的正中央＝整張圖的正中央，直接把文字置中在
-    // 整張圖正中間，中間段只要能塞下「文字＋左右各 0.5 字元留白」就好，這樣不管拉多寬，
-    // 圓弧到文字的留白永遠精準等於 paddingEachSide，不會跟著拉寬倍率一起放大。
-    const minCanvasW = cfg.capW * 2 + neededWidth;
+    // 有端蓋的款式（例如主標色塊字的左右圓角、爆炸框緞帶款左邊的星芒圖案）：端蓋本身
+    // 寬度固定、永遠不會被拉伸，只有中間到另一端之間那段會伸縮。之前的算法是把 PSD 量出來的
+    // textBox x（本身就跟端蓋有一段設計上的固定間距）也一起乘上拉寬倍率，結果字數一多、
+    // 拉寬倍率變大時，這段「跟端蓋的固定間距」也跟著被放大，端蓋到文字之間的留白就會遠遠
+    // 超過我們想要的 0.5 字元、而且倍率愈大留白愈誇張。
+    // 正確做法：中間段只要能塞下「文字＋左右各 0.5 字元留白」就好，這樣不管拉多寬，
+    // 端蓋到文字的留白永遠精準等於 paddingEachSide，不會跟著拉寬倍率一起放大。
+    // 文字置中的位置要落在「中間可伸縮段」的正中央，不是整張圖的正中央——兩端蓋等寬
+    // （例如主標色塊字）時兩者算出來一樣，但像緞帶款左邊端蓋 160、右邊端蓋 0 這種不對稱
+    // 的情況，如果錯用「整張圖正中央」，文字會被星芒圖案那塊多出來的寬度推偏，跟中間
+    // 那塊實際看到的矩形區域對不齊。
+    const { left: capL, right: capR } = resolveCapWidths(cfg.capW, cfg.naturalW);
+    const minCanvasW = capL + capR + neededWidth;
     canvasW = Math.max(Math.ceil(minCanvasW), Math.ceil(forceMinW ?? 0));
-    cx = canvasW / 2;
+    cx = (canvasW + capL - capR) / 2;
   } else {
     // 沒有端蓋（不規則爆炸框外框、或本身就是直角矩形的款式）：沒有「固定寬度端蓋」
     // 這個問題，維持原本整張圖等比例縮放、文字安全區 x/w 跟著等比例移動的算法。
