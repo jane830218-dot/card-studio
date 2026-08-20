@@ -512,12 +512,19 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
-        // 「人物框大字.psd」裡主標題文字圖層的 Layer Style → Stroke 量出來 Size=7px。
-        // 但這個 PSD 是 1920×1080 原生尺寸，這裡的畫圖座標都是 960 工作畫布（PSD 座標
-        // 直接除以 2 換算過來的，例如上面「地點」「眉批」都是這樣校正的）；輸出成 1920
-        // 圖片時，CardCanvas 會把整個畫布 scale(2,2) 放大兩倍，所以這裡 strokeWidth 設的
-        // 值最後在輸出圖上會變成兩倍粗。原本設 7 等於輸出圖變成 14px，比 PSD 實際的 7px
-        // 粗了一倍，這也是「邊太粗」的原因。改成 7/2=3.5，兩倍放大後才會精準等於 PSD 的 7px。
+        // 「人物框大字.psd」裡主標題文字圖層的 Layer Style → Stroke 量出來 Size=7px、
+        // Position=Outside。
+        //
+        // 注意：strokeWidth 這個數值「不」要比照 x/y 座標做「PSD 值除以 2」的換算！
+        // 原因跟 drawStrokedTextSegments/drawStrokedText 的畫法有關：它是先 strokeText
+        // （邊框，以路徑為中心，內外各暈開 lineWidth/2），再疊上 fillText（實心字，蓋掉
+        // 邊框往「內」暈開的那一半），所以最後畫面上看得到的邊框粗細，只有 lineWidth 的
+        // 「外」那一半，等於 lineWidth/2——這剛好跟 CardCanvas 輸出 1920 圖時 scale(2,2)
+        // 造成的「數值 x2」互相抵銷（lineWidth = strokeWidth*2，可見邊框 = lineWidth/2 =
+        // strokeWidth），所以 strokeWidth 直接填 PSD 量到的 Size 原始值即可，不用再除 2。
+        // （已用 Playwright 實際疊圖畫布 pixel-by-pixel 驗證：strokeWidth=7 在 1920 輸出
+        // 圖上量出來的可見邊框寬度就是 7px，跟 PSD 一致；改成 3.5 反而只會有 ~3-4px，
+        // 邊框太細。這裡曾經誤改成 3.5，已改回 7。）
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
@@ -529,7 +536,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 3.5,
+              strokeWidth: 7,
               maxWidth: TITLE_MAXWIDTH,
               dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
