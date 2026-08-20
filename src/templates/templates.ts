@@ -91,9 +91,9 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
     {
       // 有加「主標色塊字」時，地點標的舊位置（左下、貼近標題）會被色塊字擋到，
       // 所以要照「紅色人物框02.psd」上移到左上角（不超出安全框，高度跟右邊小標對齊）。
-      // 圖示高度still是 37（規範不變，PSD 量出來的新圖示高度也剛好是 37，沒有跟著縮放），
-      // 只是換了 x/y 起點：PSD icon 群組 bbox (73,71)-(128,145) 1920 空間，換算 960
-      // 工作畫布是 (36.5,35.5)-(64,72.5)。
+      // 2024 版重新量過（她在 PSD 裡又把整組再往上移了一次）：PSD icon 群組 bbox
+      // (73,35)-(128,109) 1920 空間，換算 960 工作畫布是 (36.5,17.5)-(64,54.5)，
+      // 高度還是 37（不變，只有 y 起點從 35 改成 17.5，取整數 18）。
       name: "地點 ICON（原始檔）",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
@@ -102,7 +102,7 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
           w = h * (icon ? icon.width / icon.height : 1);
         if (icon) {
           if (fields.hasTitleBadge) {
-            ctx.drawImage(icon, 37, 35, w, h);
+            ctx.drawImage(icon, 37, 18, w, h);
           } else {
             const ICON_BOTTOM_ADJUST = 4;
             ctx.drawImage(icon, 77, 313 - h + ICON_BOTTOM_ADJUST, w, h);
@@ -111,14 +111,14 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       },
     },
     {
-      // 同上，文字位置也比照「紅色人物框02.psd」上移：PSD 文字 bbox (142,77)-(282,143)
-      // 1920 空間，換算 960 工作畫布左邊界 x=71，baseline 抓文字框底部再留一點降部空間
-      // （比照舊版 icon 底部到 baseline 的 4px 間距抓 y=68）。字級/顏色/邊框/maxWidth
-      // 都維持原本規範不變，只有座標换了。
+      // 同上，文字位置也比照「紅色人物框02.psd」上移：2024 版重新量過，PSD 文字 bbox
+      // (142,41)-(282,107) 1920 空間，換算 960 工作畫布左邊界 x=71（不變），baseline
+      // 抓文字框底部再留一點降部空間（比照舊版 icon 底部到 baseline 的 4px 間距，
+      // 底部 53.5 減 4 約等於 50）。字級/顏色/邊框/maxWidth 都維持原本規範不變，只有 y 座標换了。
       name: "地點標籤文字",
       draw: (ctx) => {
         if (fields.showLocation === false) return;
-        const [x, y] = fields.hasTitleBadge ? [71, 68] : [116, 313];
+        const [x, y] = fields.hasTitleBadge ? [71, 50] : [116, 313];
         drawStrokedText(ctx, (fields.location as string) || "地點", x, y, {
           font: "900 36.8px 'MStiffHeiHK', sans-serif",
           fill: colors.locationText,
@@ -193,14 +193,15 @@ function withWarnText(
 
       if (title1RenderedLen > 6) {
         // 「有加主標色塊字」時，地點標（見上面「地點標籤文字」那層）會自動上移到左上角
-        // (x=71,y=68)，這種情況左上角已經被地點佔走，警語小字要往下讓一行、放在地點下方；
+        // (x=71,y=50)，這種情況左上角已經被地點佔走，警語小字要往下讓一行、放在地點下方；
         // 沒有主標色塊字，或這次沒顯示地點，左上角是空的，直接放上去、跟小標同一排對齊。
         const locationAtTopLeft = Boolean(fields.hasTitleBadge) && fields.showLocation !== false;
         // 字首固定對齊地點「icon」的左邊界（icon x=37），不是地點文字的左邊界（x=71）；
         // 沒有地點卡在左上角時，也用同一個 x，跟小標同一排對齊。
         const x = 37;
-        // 104→92：跟地點的間距原本太大，改近一點（地點 baseline y=68，這裡拉近到只差 24px）。
-        const y = locationAtTopLeft ? 92 : 49;
+        // 地點的位置跟著 PSD 一起上移了（baseline 68→50），警語小字維持原本跟地點差
+        // 24px 的間距，跟著一起上移：92→74。
+        const y = locationAtTopLeft ? 74 : 49;
         // 安全框範圍內自動壓縮寬度（跟小標/地點同一套 maxWidth 壓縮機制），文字不會超框。
         const maxWidth = locationAtTopLeft ? 400 : SAFE_RIGHT - x;
         drawStrokedText(ctx, fields.warn as string, x, y, {
