@@ -512,6 +512,12 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
+        // 「人物框大字.psd」裡主標題文字圖層的 Layer Style → Stroke 量出來 Size=7px。
+        // 但這個 PSD 是 1920×1080 原生尺寸，這裡的畫圖座標都是 960 工作畫布（PSD 座標
+        // 直接除以 2 換算過來的，例如上面「地點」「眉批」都是這樣校正的）；輸出成 1920
+        // 圖片時，CardCanvas 會把整個畫布 scale(2,2) 放大兩倍，所以這裡 strokeWidth 設的
+        // 值最後在輸出圖上會變成兩倍粗。原本設 7 等於輸出圖變成 14px，比 PSD 實際的 7px
+        // 粗了一倍，這也是「邊太粗」的原因。改成 7/2=3.5，兩倍放大後才會精準等於 PSD 的 7px。
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
@@ -523,7 +529,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 7,
+              strokeWidth: 3.5,
               maxWidth: TITLE_MAXWIDTH,
               dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
