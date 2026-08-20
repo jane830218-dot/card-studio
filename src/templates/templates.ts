@@ -77,7 +77,8 @@ function buildRibbonTemplate(imgKey: string, colors: Record<string, string>) {
       name: "頂部標籤文字",
       draw: (ctx) => {
         const lines = (fields.tag as string).split("\n");
-        const lineY = [49, 89];
+        // 第二行跟第一行太貼了，第二行往下移 2px（89→91）。
+        const lineY = [49, 91];
         lines.slice(0, 2).forEach((line, i) => {
           drawStrokedTextSegments(ctx, parseColorMarkup(line, colors.tagBase, colors.tagAccent), 536, lineY[i], {
             font: "700 40px 'DFLiHei', sans-serif",
