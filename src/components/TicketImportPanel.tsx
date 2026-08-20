@@ -225,6 +225,10 @@ export default function TicketImportPanel({ decorationRef }: Props) {
   const setExportTitle = useEditorStore((s) => s.setExportTitle);
 
   const handleParse = () => {
+    // 每次按「解析」代表要開始處理一張新工單了，先把畫布上舊的裝飾色塊清空，
+    // 不然舊色塊會一直留著，等一下「套用到畫布」加新的色塊時就會兩批疊在一起，
+    // 每次都要手動再按一次「清空所有色塊」很麻煩。
+    decorationRef.current?.clearAll();
     setPreview(parseTicketText(raw));
   };
 
