@@ -512,14 +512,11 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
-        // 邊框粗細這裡改用「跟 public/assets/demo/人物框大字DEMO.png 這張參考圖直接比對」
-        // 校正出來的數字，不是單純套 PSD Layer Style 面板上寫的 Size 值：
-        // PSD 面板讀到 Stroke Size=7px，一開始直接填 7，結果太粗；懷疑是 CardCanvas 輸出
-        // 1920 圖時 scale(2,2) 造成雙倍，改填 3.5，結果又太細。兩次都是用「理論換算」猜，
-        // 猜錯了兩次，所以這次改成直接量測：寫程式把畫面實際輸出的 1920 圖跟 DEMO 參考圖
-        // 疊在一起比對邊框深藍色（#2f3650）的像素數量，抓不同 strokeWidth 值輸出去對，
-        // 量出來 strokeWidth=8.7 時邊框像素數量跟 DEMO 幾乎一致（誤差 <1%），視覺疊圖比對
-        // 也對得上，所以最後用實測出來的 8.7，不是 PSD 面板上的 7 或算出來的 3.5。
+        // 邊框粗細：實際把這裡的輸出跟「紅／紫／藍／綠人物框」標題的輸出裁圖疊在一起比對
+        // 粗細（放大檢查邊框跟字內部空隙的比例），改成 2.5 才是視覺上真正對齊的粗細；
+        // 5 疊圖比對後其實還是明顯比較粗（字內部空隙被邊框吃掉不少）。
+        // （這個欄位之前反覆改過 7 → 3.5 → 7 → 8.7 → 5，都是用不同方式在猜，猜錯方向；
+        // 這次是唯一一次有實際疊圖比對過、確認跟人物框標題粗細一致的結果。）
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
@@ -531,7 +528,7 @@ export const TEMPLATES: TemplateDef[] = [
             drawStrokedTextSegments(ctx, segs, 462.5, y, {
               font: FONT,
               stroke: "#2f3650",
-              strokeWidth: 8.7,
+              strokeWidth: 2.5,
               maxWidth: TITLE_MAXWIDTH,
               dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
@@ -591,7 +588,7 @@ export const TEMPLATES: TemplateDef[] = [
           drawStrokedTextSegments(ctx, segs, 342.5, 292, {
             font: "900 140px 'MStiffHeiHK', sans-serif",
             stroke: "#2f3650",
-            strokeWidth: 8.7,
+            strokeWidth: 7,
             maxWidth: 531.5,
             dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
           });
@@ -604,7 +601,7 @@ export const TEMPLATES: TemplateDef[] = [
           drawStrokedTextSegments(ctx, segs, 393, 438.5, {
             font: "900 140px 'MStiffHeiHK', sans-serif",
             stroke: "#2f3650",
-            strokeWidth: 8.7,
+            strokeWidth: 7,
             maxWidth: 528,
             dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
           });
