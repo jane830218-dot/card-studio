@@ -530,7 +530,6 @@ export const TEMPLATES: TemplateDef[] = [
               stroke: "#2f3650",
               strokeWidth: 2.5,
               maxWidth: TITLE_MAXWIDTH,
-              dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
           });
         },
