@@ -456,7 +456,8 @@ export const TEMPLATES: TemplateDef[] = [
           const EYEBROW_BIG_X = 45.5;
           const TARGET_WIDTH = RED_BLOCK_RIGHT_X - EYEBROW_RIGHT_MARGIN - EYEBROW_BIG_X;
           const MAX_HSCALE = 1.3;
-          const FONT = "900 50.85px 'DFHeiUB', sans-serif";
+          // 縮小成 95%：50.85 * 0.95 = 48.3075
+          const FONT = "900 48.31px 'DFHeiUB', sans-serif";
           const segs = parseColorMarkup((fields.eyebrowBig as string) || "調電眼(心碎)", "#ffffff", "#fff000");
           const naturalWidth = measureRenderedWidth(ctx, segs, FONT, 0, null);
           const dynHScale = naturalWidth > 0 ? Math.min(TARGET_WIDTH / naturalWidth, MAX_HSCALE) : 1;
@@ -514,10 +515,14 @@ export const TEMPLATES: TemplateDef[] = [
       {
         // 邊框粗細：指定值，畫法是先畫邊框、再疊字蓋掉內側一半，這個數值換算到輸出圖上
         // 剛好等於實際看到的邊框寬度（見這層 draw 邏輯本身不做額外縮放）。
+        // 字級放大成 105%（112→117.6），陰影照 PSD Layer Style 加回來（Distance=21、
+        // Size=9，都是 1920 空間量到的值，換算 960 工作畫布除以 2＝offsetY 10.5、
+        // blur 4.5；Angle=90°+Use Global Light＝正下方，offsetX=0），
+        // 字距縮小一點（letterSpacing -4）。
         name: "主標題",
         draw: (ctx) => {
           const lines = String(fields.title || "師(抓頸抬童)!\n控(準公幼涉虐)").split("\n");
-          const FONT = "900 112px 'MStiffHeiHK', sans-serif";
+          const FONT = "900 117.6px 'MStiffHeiHK', sans-serif";
           const TITLE_MAXWIDTH = 460;
           lines.forEach((line, i) => {
             const y = 299 + i * 127;
@@ -526,7 +531,9 @@ export const TEMPLATES: TemplateDef[] = [
               font: FONT,
               stroke: "#2f3650",
               strokeWidth: 6,
+              letterSpacing: -4,
               maxWidth: TITLE_MAXWIDTH,
+              dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
             });
           });
         },
