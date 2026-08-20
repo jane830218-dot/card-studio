@@ -223,16 +223,29 @@ async function drawImageBadge(
   const paddingEachSide = cfg.fontSize * 0.5;
   const neededWidth = textWidth + paddingEachSide * 2;
 
-  // 字數少的話，色塊現在「可以」比底圖原始尺寸還窄（貼合文字），不像以前一樣
-  // 底圖尺寸是無條件下限；但兩端圓弧本身的寬度不能被壓縮，所以另外設一個
-  // 「兩端圓弧寬度相加」的下限，兩個下限取比較寬的那個。
-  const textWidenScale = neededWidth / w;
-  const capWidenScale = cfg.capW ? (cfg.capW * 2) / cfg.naturalW : 0;
-  const widenScale = Math.max(textWidenScale, capWidenScale, 0.01);
-  const textMinCanvasW = Math.ceil(cfg.naturalW * widenScale);
-  // 使用者手動拖曳指定的寬度（forceMinW）可以更寬或更窄，但不能窄過上面兩個下限。
-  const canvasW = Math.max(textMinCanvasW, Math.ceil(forceMinW ?? 0));
-  const finalWidenScale = canvasW / cfg.naturalW;
+  let canvasW: number;
+  let cx: number;
+  if (cfg.capW) {
+    // 有端蓋圓弧的款式（例如主標色塊字）：兩端圓弧本身寬度固定、永遠不會被拉伸，
+    // 只有中間那段會伸縮。之前的算法是把 PSD 量出來的 textBox x（本身就跟端蓋有一段
+    // 設計上的固定間距）也一起乘上拉寬倍率，結果字數一多、拉寬倍率變大時，
+    // 這段「跟端蓋的固定間距」也跟著被放大，兩端圓弧到文字之間的留白就會遠遠超過
+    // 我們想要的 0.5 字元、而且倍率愈大留白愈誇張。
+    // 正確做法：兩端圓弧寬度相等，中間段的正中央＝整張圖的正中央，直接把文字置中在
+    // 整張圖正中間，中間段只要能塞下「文字＋左右各 0.5 字元留白」就好，這樣不管拉多寬，
+    // 圓弧到文字的留白永遠精準等於 paddingEachSide，不會跟著拉寬倍率一起放大。
+    const minCanvasW = cfg.capW * 2 + neededWidth;
+    canvasW = Math.max(Math.ceil(minCanvasW), Math.ceil(forceMinW ?? 0));
+    cx = canvasW / 2;
+  } else {
+    // 沒有端蓋（不規則爆炸框外框、或本身就是直角矩形的款式）：沒有「固定寬度端蓋」
+    // 這個問題，維持原本整張圖等比例縮放、文字安全區 x/w 跟著等比例移動的算法。
+    const textWidenScale = neededWidth / w;
+    const textMinCanvasW = Math.ceil(cfg.naturalW * textWidenScale);
+    canvasW = Math.max(textMinCanvasW, Math.ceil(forceMinW ?? 0));
+    const finalWidenScale = canvasW / cfg.naturalW;
+    cx = (x + w / 2) * finalWidenScale;
+  }
 
   const canvas = document.createElement("canvas");
   canvas.width = canvasW;
@@ -240,9 +253,7 @@ async function drawImageBadge(
   const ctx = canvas.getContext("2d")!;
   drawCapPreservingStretch(ctx, img, cfg.naturalW, cfg.naturalH, canvasW, cfg.capW);
 
-  // 文字安全區的 x/w 跟著拉寬倍率等比例縮放（不管是變寬還是變窄都適用），
-  // y/h（上下位置與高度）維持設計時的原值不動。
-  const cx = (x + w / 2) * finalWidenScale;
+  // y/h（上下位置與高度）維持設計時的原值不動，只有水平位置 cx 會依款式用上面兩種算法之一。
   const cy = y + h / 2;
   drawCenteredText(ctx, text, cx, cy, cfg.fontSize, cfg.textColor, cfg.textStroke, cfg.strokeWidth);
   return { dataUrl: canvas.toDataURL("image/png"), canvasW, naturalH: cfg.naturalH };
