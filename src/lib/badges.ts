@@ -327,12 +327,14 @@ export async function regenerateBadgeImage(
 // - 爆炸框(橫幅款)：量「爆炸字01」那組圖層（1920 空間 x=147~652,y=518~663，同樣在主標
 //   正上方），中心點 x=(147+652)/2/2=199.75，y=(518+663)/2/2=295.25，
 //   高度=(663-518)/2=72.5。
-// 爆炸框(緞帶款) 這個 PSD 裡還沒有實際擺放的參考圖層，暫時維持原本「畫布置中」的預設值，
-// 之後有實際擺放範例的話再補上。
+// - 爆炸框(緞帶款)：量「爆炸字02」那組圖層（1920 空間 x=117~610,y=518~673，同樣在主標
+//   正上方），中心點 x=(117+610)/2/2=181.75，y=(518+673)/2/2=297.75，
+//   高度=(673-518)/2=77.5。
 export const BADGE_DEFAULT_PLACEMENT: Partial<Record<BadgeShape, { centerX: number; centerY: number; height: number }>> = {
   "title-badge-01": { centerX: 201, centerY: 300, height: 44.5 },
   "title-badge-02": { centerX: 201, centerY: 300, height: 44.5 },
   "title-badge-03": { centerX: 201, centerY: 300, height: 44.5 },
+  "burst-ribbon": { centerX: 181.75, centerY: 297.75, height: 77.5 },
   "burst-h": { centerX: 200, centerY: 295, height: 72.5 },
 };
 
