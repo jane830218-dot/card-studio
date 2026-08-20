@@ -260,13 +260,14 @@ export default function TicketImportPanel({ decorationRef }: Props) {
       });
     });
 
-    // 主標小色塊字：跟其他裝飾色塊一樣手動加上去，預設用 01（黃底）+ 預設位置，
-    // 套用後自己拖到主標上面、想換款式就刪掉在「裝飾色塊」面板重新選款加一個。
+    // 主標小色塊字：跟其他裝飾色塊一樣手動加上去，預設用 01（黃底）。
+    // 這裡故意不傳 left/top（之前寫死 330,120，跟主標完全對不上），改成不指定，
+    // 讓 DecorationLayer.addBadge 自己套用 badges.ts 的 BADGE_DEFAULT_PLACEMENT——
+    // 那組座標是直接量「紅色人物框02.psd」裡實際擺放好的「主標上色塊字01」位置校正出來的，
+    // 會自動大概對在主標正上方，不用套用完再手動拖過去。想換款式就刪掉在「裝飾色塊」
+    // 面板重新選款加一個（一樣會用同一個校正過的預設位置）。
     if (preview.titleBadgeText) {
-      decorationRef.current?.addBadge(DEFAULT_TITLE_BADGE_SHAPE, preview.titleBadgeText, DEFAULT_BADGE_COLOR, {
-        left: 330,
-        top: 120,
-      });
+      decorationRef.current?.addBadge(DEFAULT_TITLE_BADGE_SHAPE, preview.titleBadgeText, DEFAULT_BADGE_COLOR);
     }
   };
 
