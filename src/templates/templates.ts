@@ -461,7 +461,7 @@ export const TEMPLATES: TemplateDef[] = [
           const segs = parseColorMarkup((fields.eyebrowBig as string) || "調電眼(心碎)", "#ffffff", "#fff000");
           const naturalWidth = measureRenderedWidth(ctx, segs, FONT, 0, null);
           const dynHScale = naturalWidth > 0 ? Math.min(TARGET_WIDTH / naturalWidth, MAX_HSCALE) : 1;
-          drawStrokedTextSegments(ctx, segs, EYEBROW_BIG_X, 126, {
+          drawStrokedTextSegments(ctx, segs, EYEBROW_BIG_X, 125, {
             font: FONT,
             align: "left",
             hScale: dynHScale,
