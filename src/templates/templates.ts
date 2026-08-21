@@ -661,9 +661,10 @@ export const TEMPLATES: TemplateDef[] = [
         name: "左下小標籤文字",
         draw: (ctx) => {
           const segs = parseColorMarkup((fields.tagSmall as string) || "兌現(12強冠軍)鈔？", "#fefefe", "#ffff00");
+          // 寬度 +10%：0.91*1.1=1.001
           drawStrokedTextSegments(ctx, segs, 68.5, 463.5 - 1.005, {
             font: "900 28.53px 'DFLiHeiBdP', sans-serif",
-            hScale: 0.91,
+            hScale: 1.001,
             vScale: 1.1,
             letterSpacing: -0.57,
             maxWidth: 225.5,
@@ -681,9 +682,10 @@ export const TEMPLATES: TemplateDef[] = [
         name: "補充說明文字",
         draw: (ctx) => {
           const segs = parseColorMarkup((fields.note as string) || "單張成本估(增1.5元)", "#393939", "#c50000");
+          // 寬度 +10%：1.0*1.1=1.1
           drawStrokedTextSegments(ctx, segs, 76, 499.5 - 1.005, {
             font: "900 22.5px 'DFLiHeiBd', sans-serif",
-            hScale: 1.0,
+            hScale: 1.1,
             vScale: 1.1,
             maxWidth: 206,
           });
