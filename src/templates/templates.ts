@@ -457,7 +457,12 @@ export const TEMPLATES: TemplateDef[] = [
             hScale: EYEBROW_HSCALE,
             vScale: EYEBROW_VSCALE,
             maxWidth: EYEBROW_MAXWIDTH,
-            dropShadow: { color: "rgba(0,0,0,0.57)", blur: 3, offsetX: 3, offsetY: 3 },
+            // 照 PSD Layer Style 讀出來的 Drop Shadow 校正：Distance=9、Size=5、
+            // Angle=135°（Use Global Light 沒勾，是這個圖層自己的角度）、Opacity=57%。
+            // 1920 空間的 Distance/Size 換算 960 工作畫布除以 2＝4.5／2.5；
+            // 135° 角度分解成 offsetX/offsetY：4.5*cos(45°)=4.5*sin(45°)≈3.18
+            // （下右方向，跟角度 135°＝左上打光、影子往右下 的方向一致）。
+            dropShadow: { color: "rgba(0,0,0,0.57)", blur: 2.5, offsetX: 3.18, offsetY: 3.18 },
           });
         },
       },
@@ -484,7 +489,12 @@ export const TEMPLATES: TemplateDef[] = [
             hScale: dynHScale,
             vScale: 1.089,
             maxWidth: TARGET_WIDTH,
-            dropShadow: { color: "rgba(0,0,0,0.57)", blur: 3, offsetX: 3, offsetY: 3 },
+            // 照 PSD Layer Style 讀出來的 Drop Shadow 校正：Distance=9、Size=5、
+            // Angle=135°（Use Global Light 沒勾，是這個圖層自己的角度）、Opacity=57%。
+            // 1920 空間的 Distance/Size 換算 960 工作畫布除以 2＝4.5／2.5；
+            // 135° 角度分解成 offsetX/offsetY：4.5*cos(45°)=4.5*sin(45°)≈3.18
+            // （下右方向，跟角度 135°＝左上打光、影子往右下 的方向一致）。
+            dropShadow: { color: "rgba(0,0,0,0.57)", blur: 2.5, offsetX: 3.18, offsetY: 3.18 },
           });
         },
       },
@@ -556,16 +566,23 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
+        // 水平置中在「安全框左邊界」跟「主標題字首（x=462.5，見上面「主標題」層）」
+        // 這兩個點中間，不用固定死的 x：SAFE_LEFT=53（跟其他版型共用的安全框左邊界，
+        // 見「頂部標籤文字」那段說明），中心點 (53+462.5)/2=257.75。
         name: "警語小字",
         draw: (ctx) => {
           if (!fields.warn) return;
-          drawStrokedText(ctx, fields.warn as string, 158, 498.79, {
+          const SAFE_LEFT = 53;
+          const TITLE_START_X = 462.5;
+          const centerX = (SAFE_LEFT + TITLE_START_X) / 2;
+          drawStrokedText(ctx, fields.warn as string, centerX, 498.79, {
             font: "900 18px 'DFLiHeiBdP', sans-serif",
             fill: "#ffffff",
             stroke: "#000000",
             strokeWidth: 4,
             letterSpacing: 0.45,
-            align: "left",
+            align: "center",
+            maxWidth: TITLE_START_X - SAFE_LEFT - 10,
           });
         },
       },
