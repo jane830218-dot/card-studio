@@ -791,10 +791,13 @@ export const TEMPLATES: TemplateDef[] = [
               units.push({ type: "cjk", ch: c.ch, fill: c.fill });
             }
           });
+          // 字首（頂端）比照左上角地點標（打卡標）icon 的頂端 y=18，兩邊看起來同高。
+          // 原本 BOX_TOP=35、BOX_H=472.5，底部邊界（BOX_TOP+BOX_H=507.5）維持不變，
+          // 只把頂端往上移 17px，BOX_H 跟著補回同樣的 17px（507.5-18=489.5）。
           const VSCALE = 0.8,
             MAX_FONT = 85.23,
-            BOX_TOP = 35,
-            BOX_H = 472.5,
+            BOX_TOP = 18,
+            BOX_H = 489.5,
             ASCENT_RATIO = 0.669;
           const N = Math.max(units.length, 1);
           const fontSizeHalf = Math.min(MAX_FONT, BOX_H / (N * VSCALE));
