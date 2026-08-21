@@ -771,10 +771,18 @@ export const TEMPLATES: TemplateDef[] = [
           segs.forEach((s) => {
             for (const ch of s.text) rawChars.push({ ch, fill: s.fill });
           });
-          const LATIN_RE = /[A-Za-z0-9]/;
-          const units: { type: "latin" | "cjk"; text?: string; ch?: string; fill: string }[] = [];
+          // 數字改用跟中文字一樣的 MStiffHeiHK 字體（原本英文字母跟數字都是同一個
+          // ArialBlackEmbed 字體），所以拆成三種 unit：純數字 "digit"、純英文字母
+          // "latin"、中文字 "cjk"，各自可能分開連續 run（同色才會合併）。
+          const DIGIT_RE = /[0-9]/;
+          const ALPHA_RE = /[A-Za-z]/;
+          const units: { type: "latin" | "digit" | "cjk"; text?: string; ch?: string; fill: string }[] = [];
           rawChars.forEach((c) => {
-            if (LATIN_RE.test(c.ch)) {
+            if (DIGIT_RE.test(c.ch)) {
+              const last = units[units.length - 1];
+              if (last && last.type === "digit" && last.fill === c.fill) last.text += c.ch;
+              else units.push({ type: "digit", text: c.ch, fill: c.fill });
+            } else if (ALPHA_RE.test(c.ch)) {
               const last = units[units.length - 1];
               if (last && last.type === "latin" && last.fill === c.fill) last.text += c.ch;
               else units.push({ type: "latin", text: c.ch, fill: c.fill });
@@ -826,6 +834,20 @@ export const TEMPLATES: TemplateDef[] = [
                 maxWidth: latinMaxWidth,
               });
               y += LATIN_STEP;
+            } else if (u.type === "digit") {
+              // 數字用 MStiffHeiHK（跟中文字同字體同大小 fontSizeHalf，會隨字數 N 一起縮放），
+              // 錨點跟寬度上限直接沿用中文字已經驗證過安全的 x=878 置中／maxWidth=85，
+              // 保證數字（不管幾位數）一定不會超出底部色塊（左邊界約x=830）或安全框（右邊界約x=920.5）。
+              drawStrokedText(ctx, u.text!, 878, y, {
+                font: FONT,
+                fill: u.fill,
+                stroke: "#401c80",
+                strokeWidth: 6 / VSCALE,
+                align: "center",
+                maxWidth: CJK_MAX_WIDTH,
+                vScale: VSCALE,
+              });
+              y += STEP;
             } else {
               drawStrokedText(ctx, u.ch!, 878, y, {
                 font: FONT,
