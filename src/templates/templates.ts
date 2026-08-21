@@ -847,30 +847,31 @@ export const TEMPLATES: TemplateDef[] = [
               // 不會再超框。用實際墨色邊界修正錨點，讓視覺置中跟中文字對齊（跟數字那組
               // 同一套修正邏輯）。
               //
-              // 另外兩個問題一起修：
-              // 1) 跟上一行中文字重疊：原本沿用字首那組固定的大字體（101px）跟固定行高
-              //    LATIN_STEP，跟中文字動態縮放的行高 STEP 對不上，字數一多、中文字行高
-              //    縮小了，英文那一行還是用原本沒縮小的固定行高，字就會跟上一行黏在一起。
-              //    改成跟中文字共用同一套動態行高 STEP，行距才會一致，不會重疊。
-              // 2) 邊框過粗：原本固定用 101px 大字體，硬靠 hScale 壓成 85px 寬（"alpha" 這種
-              //    5個字母壓縮比例非常誇張），而邊框粗細的補償公式（除以 finalHScale）只補
-              //    水平方向，垂直方向補不到，壓縮比例越誇張、垂直邊框看起來就越粗。改成先
-              //    依字數算出一個「自然寬度就已經接近安全寬度」的字體大小，不需要再靠 hScale
-              //    硬壓，邊框粗細才會跟中文字一致。
-              const dynLatinProbeFont = `900 ${fontSizeHalf}px 'ArialBlackEmbed', 'Arial Black', Arial, sans-serif`;
-              ctx.font = dynLatinProbeFont;
-              const naturalW = ctx.measureText(u.text!).width;
-              const fitFontSize = naturalW > CJK_MAX_WIDTH ? fontSizeHalf * (CJK_MAX_WIDTH / naturalW) : fontSizeHalf;
-              const midLatinFont = `900 ${fitFontSize}px 'ArialBlackEmbed', 'Arial Black', Arial, sans-serif`;
+              // 跟上一行中文字重疊：原本沿用字首那組固定的大字體（101px）跟固定行高
+              // LATIN_STEP，跟中文字動態縮放的行高 STEP 對不上，字數一多、中文字行高
+              // 縮小了，英文那一行還是用原本沒縮小的固定行高，字就會跟上一行黏在一起。
+              // 改成跟中文字共用同一套動態行高 STEP，行距才會一致，不會重疊。
+              //
+              // 寬度壓縮不要等比縮放（不要連字體大小/高度一起縮小），只壓左右寬度：
+              // 字體大小固定用 fontSizeHalf（跟中文字同高），寬度超出時交給 drawStrokedText
+              // 內建的 maxWidth 機制單純用 hScale 往左右壓，高度（vScale/字體大小）不變。
+              const midLatinFont = `900 ${fontSizeHalf}px 'ArialBlackEmbed', 'Arial Black', Arial, sans-serif`;
               ctx.font = midLatinFont;
               ctx.textAlign = "center";
               const lm = ctx.measureText(u.text!);
               const inkOffset = ((lm.actualBoundingBoxLeft || 0) - (lm.actualBoundingBoxRight || 0)) / 2;
+              // 邊框粗細跟中文字看起來不一樣：drawStrokedText 內部為了不讓邊框在壓縮方向
+              // 被壓扁不見，是用 lineWidth = strokeWidth / finalHScale 補償，但這樣壓得越
+              // 兇（英文單字越長、finalHScale 越小），沒被壓縮的垂直方向邊框反而越粗。
+              // 這裡先自己算出壓縮後的 finalHScale 會是多少，把傳進去的 strokeWidth 先乘
+              // 回這個倍率，兩邊相除剛好抵消，最後邊框粗細就會固定在 6（跟中文字/數字沒
+              // 被壓縮時的粗細一致），不會再隨字數變粗。
+              const estFinalHScale = lm.width > CJK_MAX_WIDTH ? CJK_MAX_WIDTH / lm.width : 1;
               drawStrokedText(ctx, u.text!, 878 + inkOffset, y, {
                 font: midLatinFont,
                 fill: u.fill,
                 stroke: "#401c80",
-                strokeWidth: 6 / VSCALE,
+                strokeWidth: (6 / VSCALE) * estFinalHScale,
                 align: "center",
                 maxWidth: CJK_MAX_WIDTH,
                 vScale: VSCALE,
