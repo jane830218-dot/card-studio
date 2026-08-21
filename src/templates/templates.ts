@@ -647,6 +647,9 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
+        // 字尾（右邊界）最多可以跟標題第二行的右邊界一樣：第二行是 x=393+maxWidth=528，
+        // 右邊界 393+528=921；第一行 x=342.5，maxWidth 改成 921-342.5=578.5，
+        // 這樣兩行字塞滿時右邊界會對齊。
         name: "標題第一行",
         draw: (ctx) => {
           const segs = parseColorMarkup((fields.title1 as string) || "(新台幣)改版", "#ffffff", "#fff000");
@@ -654,7 +657,7 @@ export const TEMPLATES: TemplateDef[] = [
             font: "900 140px 'MStiffHeiHK', sans-serif",
             stroke: "#2f3650",
             strokeWidth: 7,
-            maxWidth: 531.5,
+            maxWidth: 578.5,
             dropShadow: { color: "rgba(47,54,80,0.51)", blur: 4.5, offsetX: 0, offsetY: 10.5 },
           });
         },
