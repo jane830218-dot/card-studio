@@ -744,21 +744,22 @@ export const TEMPLATES: TemplateDef[] = [
       },
       frameLayer("arrow"),
       {
+        // 位置比照「圓框大字」左上角地點標（icon (57,18)、文字 (91,50)），
+        // 不是另外量的新位置，顏色/白邊也一起比照。
         name: "左上地點標籤",
         draw: (ctx) => {
           const icon = loadedIcons.red;
-          const TEXT_X = 87,
-            BASELINE_Y = 69.5;
-          const ICON_BOTTOM_ADJUST = 3.5;
+          const h = 37,
+            w = h * (icon ? icon.width / icon.height : 1);
           if (icon) {
-            const h = 37,
-              w = h * (icon.width / icon.height);
-            ctx.drawImage(icon, TEXT_X - 10 - w, BASELINE_Y - h + ICON_BOTTOM_ADJUST, w, h);
+            ctx.drawImage(icon, 57, 18, w, h);
           }
-          drawStrokedText(ctx, (fields.location as string) || "宜蘭", TEXT_X, BASELINE_Y, {
+          drawStrokedText(ctx, (fields.location as string) || "宜蘭", 91, 50, {
             font: "900 36.8px 'MStiffHeiHK', sans-serif",
-            fill: "#b90000",
-            maxWidth: 700,
+            fill: "#B90000",
+            stroke: "#ffffff",
+            strokeWidth: 2,
+            maxWidth: 400,
           });
         },
       },
