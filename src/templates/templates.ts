@@ -821,8 +821,10 @@ export const TEMPLATES: TemplateDef[] = [
             BOX_TOP +
             (units[0] && units[0].type === "latin" ? ASCENT_RATIO * LATIN_FONT_HALF : ASCENT_RATIO * fontSizeHalf);
           let y = Y1;
-          units.forEach((u) => {
-            if (u.type === "latin") {
+          units.forEach((u, idx) => {
+            if (u.type === "latin" && idx === 0) {
+              // 字首英文（例如 "EZWay" 放在最上面）：維持原本設計，貼右側、比較寬鬆的
+              // 錨點跟寬度上限，這是配合最上面三角形裝飾區域留白比較多的版面。
               const LATIN_RIGHT_ANCHOR = 935.5;
               const naturalLatinW = measureSingleRenderedWidth(ctx, u.text!, LATIN_FONT, 0, LATIN_HSCALE, null);
               const avgCharW = naturalLatinW / Math.max(u.text!.length, 1);
@@ -836,6 +838,27 @@ export const TEMPLATES: TemplateDef[] = [
                 hScale: LATIN_HSCALE,
                 vScale: LATIN_VSCALE,
                 maxWidth: latinMaxWidth,
+              });
+              y += LATIN_STEP;
+            } else if (u.type === "latin") {
+              // 英文不是字首、出現在中間或後面：原本沿用字首那組貼右側、較寬的錨點／寬度，
+              // 中間的紫色色塊比頂端窄，會超出色塊跟安全框（位置跑掉）。改成跟中文字、
+              // 數字共用同一個已驗證安全的置中框（x=878、maxWidth=85），寬度自動壓縮，
+              // 不會再超框。用實際墨色邊界修正錨點，讓視覺置中跟中文字對齊（跟數字那組
+              // 同一套修正邏輯）。
+              ctx.font = LATIN_FONT;
+              ctx.textAlign = "center";
+              const lm = ctx.measureText(u.text!);
+              const inkOffset = ((lm.actualBoundingBoxLeft || 0) - (lm.actualBoundingBoxRight || 0)) / 2;
+              drawStrokedText(ctx, u.text!, 878 + inkOffset, y, {
+                font: LATIN_FONT,
+                fill: u.fill,
+                stroke: "#401c80",
+                strokeWidth: 6 / LATIN_VSCALE,
+                align: "center",
+                hScale: LATIN_HSCALE,
+                vScale: LATIN_VSCALE,
+                maxWidth: CJK_MAX_WIDTH,
               });
               y += LATIN_STEP;
             } else if (u.type === "digit") {
