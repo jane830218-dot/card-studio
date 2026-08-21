@@ -432,8 +432,16 @@ export const TEMPLATES: TemplateDef[] = [
             LINE_H = 1.5;
           const EYEBROW_BIG_X_MATCH = 45.5;
           const EYEBROW_MAXWIDTH = EYEBROW_RIGHT_X - EYEBROW_BIG_X_MATCH;
+          const EYEBROW_LETTER_SPACING = 2;
           const text = (fields.eyebrow as string) || "還有";
-          const textW = measureSingleRenderedWidth(ctx, text, EYEBROW_FONT, 0, 0.9, EYEBROW_MAXWIDTH);
+          const textW = measureSingleRenderedWidth(
+            ctx,
+            text,
+            EYEBROW_FONT,
+            EYEBROW_LETTER_SPACING,
+            0.9,
+            EYEBROW_MAXWIDTH
+          );
           const lineRightX = EYEBROW_RIGHT_X - textW - LINE_GAP;
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(LINE_LEFT_X, LINE_Y, Math.max(0, lineRightX - LINE_LEFT_X), LINE_H);
@@ -441,6 +449,7 @@ export const TEMPLATES: TemplateDef[] = [
             font: EYEBROW_FONT,
             fill: "#ffffff",
             align: "right",
+            letterSpacing: EYEBROW_LETTER_SPACING,
             hScale: 0.9,
             vScale: 1.1,
             maxWidth: EYEBROW_MAXWIDTH,
