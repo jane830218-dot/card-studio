@@ -594,6 +594,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: "圓框大字",
     thumbImg: "circle",
     fields: [
+      { key: "showLocation", type: "checkbox", label: "顯示地點資訊", default: true },
+      { key: "location", label: "左上地點", default: "基隆" },
       { key: "banner", label: "頂部公告文字（() 內紅色強調）", default: "主題確定兩年半發行" },
       { key: "title1", label: "標題第一行（() 內黃色強調）", default: "(新台幣)改版" },
       { key: "title2", label: "標題第二行（() 內藍色強調）", default: "(鈔票)要換了" },
@@ -603,6 +605,28 @@ export const TEMPLATES: TemplateDef[] = [
     build: (fields) => [
       whiteBgLayer(),
       frameLayer("circle"),
+      {
+        // 新增左上角地點標，直接比照「紅色人物框」有主標色塊字時、地點上移到左上角那組座標
+        // （icon (57,18)、文字 (91,50)），不是另外量的新位置。顏色也比照紅色人物框的
+        // locationText（#B90000）跟白邊。
+        name: "地點",
+        draw: (ctx) => {
+          if (fields.showLocation === false) return;
+          const icon = loadedIcons.red;
+          const h = 37,
+            w = h * (icon ? icon.width / icon.height : 1);
+          if (icon) {
+            ctx.drawImage(icon, 57, 18, w, h);
+          }
+          drawStrokedText(ctx, (fields.location as string) || "基隆", 91, 50, {
+            font: "900 36.8px 'MStiffHeiHK', sans-serif",
+            fill: "#B90000",
+            stroke: "#ffffff",
+            strokeWidth: 2,
+            maxWidth: 400,
+          });
+        },
+      },
       {
         // 補上 () 紅色強調（PSD 用色盤量出來是 c50000，跟「補充說明」共用同一個紅），
         // 原本直接用 drawStrokedText 畫整串純色字，改成跟其他欄位一樣先 parseColorMarkup
@@ -648,15 +672,11 @@ export const TEMPLATES: TemplateDef[] = [
           });
         },
       },
-      {
-        name: "左下標籤底色塊＋小icon",
-        draw: (ctx) => {
-          ctx.fillStyle = "#3b4057";
-          ctx.fillRect(52.5, 434.5, 253, 35.5);
-          ctx.fillStyle = "#fff99c";
-          ctx.fillRect(57, 441, 6.5, 6.5);
-        },
-      },
+      // 底色塊＋小icon、補充說明底線這兩層原本是用 fillRect 畫純色矩形，這次換新版
+      // 「圓框大字_底圖.png」之後，量出來底色塊其實是帶斜向漸層/浮雕的（不是純色 #3b4057，
+      // 量測範圍落在 rgb(39,42,60)~rgb(59,64,87) 之間），已經直接畫進新底圖裡了；
+      // 補充說明底線量出來還是純色 #fff000、位置也跟新底圖裡的一致。兩層都改成由
+      // frameLayer("circle") 的底圖負責畫，這裡拿掉 fillRect，不然純色矩形會蓋掉底圖的漸層。
       {
         name: "左下小標籤文字",
         draw: (ctx) => {
@@ -669,13 +689,6 @@ export const TEMPLATES: TemplateDef[] = [
             letterSpacing: -0.57,
             maxWidth: 225.5,
           });
-        },
-      },
-      {
-        name: "補充說明底線",
-        draw: (ctx) => {
-          ctx.fillStyle = "#fff000";
-          ctx.fillRect(81, 509, 210.5, 2.5);
         },
       },
       {
