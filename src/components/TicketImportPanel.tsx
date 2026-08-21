@@ -40,9 +40,18 @@ import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
 //                                            解析時會自動忽略這個「-」
 //   兩行小標下=                            → 補充說明（note），內容接在下一行
 //
+//   箭頭框大字專用（欄位結構：location / vertical / title1 / title2，title1／title2
+//   一樣跟緞帶框共用欄位名稱）：
+//   主標=                                  → 直式標題（vertical），跟人物框大字一樣可以換行、
+//                                            不用拆行
+//   兩行小標=                              → 標題第一行／第二行（title1／title2，依換行拆兩行，
+//                                            注意跟圓框大字的「兩行小標上=／兩行小標下=」是
+//                                            不同標記，這裡兩行是接在同一個「兩行小標=」底下）
+//
 // 目前支援紅／紫／藍／綠這四個「緞帶框」版型（欄位結構一致：tag / title1 / title2）、
-// 「人物框大字」（欄位結構：title / sub / eyebrow / eyebrowBig）跟「圓框大字」
-// （欄位結構：banner / title1 / title2 / tagSmall / note）。如果之後要支援其他版型，
+// 「人物框大字」（欄位結構：title / sub / eyebrow / eyebrowBig）、「圓框大字」
+// （欄位結構：banner / title1 / title2 / tagSmall / note）跟「箭頭框大字」
+// （欄位結構：location / vertical / title1 / title2）。如果之後要支援其他版型，
 // 欄位名稱不同，需要另外擴充下面的解析與 applyToFields()。
 
 const COLOR_TO_TEMPLATE: Record<string, string> = {
@@ -56,10 +65,11 @@ const COLOR_TO_TEMPLATE: Record<string, string> = {
   綠色: "green-frame",
 };
 
-// 沒有顏色前綴、用完整版型名稱判斷的版型（目前是「人物框大字」跟「圓框大字」）。
+// 沒有顏色前綴、用完整版型名稱判斷的版型（目前是「人物框大字」「圓框大字」跟「箭頭框大字」）。
 const NAME_TO_TEMPLATE: Record<string, string> = {
   人物框大字: "person-frame-big",
   圓框大字: "circle-big",
+  箭頭框大字: "arrow-big",
 };
 
 // 色塊行的形狀關鍵字（跟 badges.ts 的 BADGE_SHAPE_LABELS 對應），
@@ -104,13 +114,16 @@ interface ParsedTicket {
   banner: string | null;
   tagSmall: string | null;
   note: string | null;
+  // 箭頭框大字專用欄位（其他版型用不到，維持 null 就好；title1/title2 跟緞帶框共用同一個欄位）：
+  vertical: string | null;
 }
 
 // 判斷一行是不是「區塊標記」的開頭（主標=／小標=／左上=／警語=／打卡=／色塊=／(SOU:.../(SOU=...)，
-// 以及圓框大字專用的 主標兩行上=／主標兩行下=／主標上小字=／兩行小標上=／兩行小標下=），
-// 用來在同一段落裡把黏在一起、中間沒空行分隔的區塊拆開（見下面 parseTicketText 的說明）。
+// 圓框大字專用的 主標兩行上=／主標兩行下=／主標上小字=／兩行小標上=／兩行小標下=，
+// 以及箭頭框大字專用的 兩行小標=），用來在同一段落裡把黏在一起、中間沒空行分隔的區塊拆開
+// （見下面 parseTicketText 的說明）。
 const MARKER_LINE_RE =
-  /^(主標兩行上=|主標兩行下=|主標上小字=|兩行小標上=|兩行小標下=|主標=|小標=|左上=|警語=|打卡=|色塊=|\(SOU[:=：])/i;
+  /^(主標兩行上=|主標兩行下=|主標上小字=|兩行小標上=|兩行小標下=|兩行小標=|主標=|小標=|左上=|警語=|打卡=|色塊=|\(SOU[:=：])/i;
 
 function parseTicketText(raw: string): ParsedTicket {
   // 先用空白行切成一段一段，但發單習慣不完全一致——有時候「人物框大字 框N 標題」這種
@@ -158,6 +171,7 @@ function parseTicketText(raw: string): ParsedTicket {
     banner: null,
     tagSmall: null,
     note: null,
+    vertical: null,
   };
 
   // 一段是不是「另一個區塊標記」的開頭，用來判斷 主標= 該在哪裡停止往後併段落。
@@ -167,6 +181,7 @@ function parseTicketText(raw: string): ParsedTicket {
     b.startsWith("主標上小字=") ||
     b.startsWith("兩行小標上=") ||
     b.startsWith("兩行小標下=") ||
+    b.startsWith("兩行小標=") ||
     b.startsWith("主標=") ||
     b.startsWith("小標=") ||
     b.startsWith("左上=") ||
@@ -214,6 +229,21 @@ function parseTicketText(raw: string): ParsedTicket {
       continue;
     }
 
+    // 箭頭框大字專用：兩行小標=底下兩行分別對應標題第一行／第二行（跟圓框大字的
+    // 「兩行小標上=／兩行小標下=」是不同標記，這裡兩行接在同一個「兩行小標=」底下，
+    // 用換行拆開，不用像圓框大字那樣拆成兩個獨立標記）。
+    if (block.startsWith("兩行小標=")) {
+      const lines = block
+        .replace(/^兩行小標=\s*/, "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      result.title1 = lines[0] ?? null;
+      result.title2 = lines[1] ?? null;
+      i++;
+      continue;
+    }
+
     if (block.startsWith("主標=")) {
       // 主標= 底下可能因為「(文字)----主標小色塊字」那行後面留了空白行，
       // 被切成好幾段；持續往後併段落，直到遇到下一個已知區塊標記為止，
@@ -235,6 +265,12 @@ function parseTicketText(raw: string): ParsedTicket {
         // 人物框大字的「主標=」直接對應「主標題」欄位本身（本來就支援換行＋() 黃色強調），
         // 不用像緞帶框那樣拆成主標小色塊字／標題第一行／第二行。
         result.title = lines.join("\n") || null;
+        continue;
+      }
+
+      if (result.templateId === "arrow-big") {
+        // 箭頭框大字的「主標=」直接對應「直式標題」欄位本身，一樣不用拆行。
+        result.vertical = lines.join("\n") || null;
         continue;
       }
 
@@ -403,6 +439,8 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     if (preview.banner !== null) setField("banner", preview.banner);
     if (preview.tagSmall !== null) setField("tagSmall", preview.tagSmall);
     if (preview.note !== null) setField("note", preview.note);
+    // 箭頭框大字專用欄位（其他版型的 preview.vertical 都會是 null，不會誤設到其他版型的欄位上）。
+    if (preview.vertical !== null) setField("vertical", preview.vertical);
     // 版型裡 warn 欄位預設會帶一句提示文字（例如「違法行為 請勿模仿」），
     // 如果這次工單沒有寫「警語=」，要主動清空，不然畫面會殘留預設警語小字。
     setField("warn", preview.warn ?? "");
@@ -439,7 +477,8 @@ export default function TicketImportPanel({ decorationRef }: Props) {
       <div className="hint" style={{ marginBottom: 8 }}>
         直接貼上「說明」欄位的完整內容（含 主標= / 小標= / 打卡= / 色塊= 等區塊，人物框大字
         還多支援 左上= 兩行；圓框大字改用 主標兩行上= / 主標兩行下= / 主標上小字= /
-        兩行小標上= / 兩行小標下= 這五個標記），按「解析」預覽拆解結果，確認沒問題再按
+        兩行小標上= / 兩行小標下= 這五個標記；箭頭框大字改用 主標=（對應直式標題）跟
+        兩行小標=（換行拆成標題第一行/第二行）），按「解析」預覽拆解結果，確認沒問題再按
         「套用」寫入版型、欄位與裝飾色塊。緞帶框（紅／紫／藍／綠）主標=第一行如果是
         「(文字)----主標小色塊字」，會自動拆成一個放在主標上方的裝飾色塊；這時如果同時有
         打卡= 地點，地點標會自動上移到左上角（紅色人物框02.psd 的規範，避免被色塊字擋到）。
@@ -469,7 +508,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
               <strong>{preview.templateId}</strong>
             ) : (
               <span style={{ color: "#c0000a" }}>
-                無法辨識版型，請確認第一段有寫「紅／紫／藍／綠」「人物框大字」或「圓框大字」
+                無法辨識版型，請確認第一段有寫「紅／紫／藍／綠」「人物框大字」「圓框大字」或「箭頭框大字」
               </span>
             )}
             {preview.frameNumber && <span>（框{preview.frameNumber}，目前僅供參考，尚未對應多款式）</span>}
@@ -488,6 +527,12 @@ export default function TicketImportPanel({ decorationRef }: Props) {
               <div style={{ whiteSpace: "pre-wrap" }}>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
               <div>左下小標籤：{preview.tagSmall ?? <em>（未偵測到）</em>}</div>
               <div>補充說明：{preview.note ?? <em>（未偵測到）</em>}</div>
+            </>
+          ) : preview.templateId === "arrow-big" ? (
+            <>
+              <div style={{ whiteSpace: "pre-wrap" }}>直式標題：{preview.vertical ?? <em>（未偵測到）</em>}</div>
+              <div>標題第一行：{preview.title1 ?? <em>（未偵測到）</em>}</div>
+              <div>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
             </>
           ) : (
             <>
