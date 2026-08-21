@@ -566,15 +566,19 @@ export const TEMPLATES: TemplateDef[] = [
         },
       },
       {
-        // 水平置中在「安全框左邊界」跟「主標題字首（x=462.5，見上面「主標題」層）」
-        // 這兩個點中間，不用固定死的 x：SAFE_LEFT=53（跟其他版型共用的安全框左邊界，
-        // 見「頂部標籤文字」那段說明），中心點 (53+462.5)/2=257.75。
+        // 上一版用「安全框左邊界(53)跟主標題字首(462.5)的中點」算出 centerX=257.75，
+        // 但實測發現這個中點明顯偏左於照片框本身的視覺中心（照片框是 imageSlot
+        // x:0~630，真正的視覺中心是 315），跟主標題字首中間留了一大塊空白沒被算進去，
+        // 所以看起來還是偏左、沒有真的置中。改成直接用照片框本身的寬度置中：
+        // centerX = 630/2 = 315，maxWidth 抓到主標題字首（462.5）往左留一點緩衝，
+        // 避免文字太長時撞到主標題。
         name: "警語小字",
         draw: (ctx) => {
           if (!fields.warn) return;
-          const SAFE_LEFT = 53;
+          const PHOTO_LEFT = 0;
+          const PHOTO_RIGHT = 630;
           const TITLE_START_X = 462.5;
-          const centerX = (SAFE_LEFT + TITLE_START_X) / 2;
+          const centerX = (PHOTO_LEFT + PHOTO_RIGHT) / 2;
           drawStrokedText(ctx, fields.warn as string, centerX, 498.79, {
             font: "900 18px 'DFLiHeiBdP', sans-serif",
             fill: "#ffffff",
@@ -582,7 +586,7 @@ export const TEMPLATES: TemplateDef[] = [
             strokeWidth: 4,
             letterSpacing: 0.45,
             align: "center",
-            maxWidth: TITLE_START_X - SAFE_LEFT - 10,
+            maxWidth: TITLE_START_X - PHOTO_LEFT - 20,
           });
         },
       },
