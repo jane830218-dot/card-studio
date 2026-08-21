@@ -840,9 +840,18 @@ export const TEMPLATES: TemplateDef[] = [
               y += LATIN_STEP;
             } else if (u.type === "digit") {
               // 數字用 MStiffHeiHK（跟中文字同字體同大小 fontSizeHalf，會隨字數 N 一起縮放），
-              // 錨點跟寬度上限直接沿用中文字已經驗證過安全的 x=878 置中／maxWidth=85，
+              // 寬度上限直接沿用中文字已經驗證過安全的 maxWidth=85，
               // 保證數字（不管幾位數）一定不會超出底部色塊（左邊界約x=830）或安全框（右邊界約x=920.5）。
-              drawStrokedText(ctx, u.text!, 878, y, {
+              // 置中對齊：textAlign=center 是用「字寬（advance width）」置中，但數字（尤其像
+              // "1" 這種窄字）左右留白不對稱，視覺上的墨色中心會偏離幾何中心，導致跟中文字
+              // 對不齊（實測「180」視覺中心比中文字偏左約9px）。這裡改用 actualBoundingBox
+              // 量出真正的墨色左右邊界，算出偏移量去修正錨點，讓數字的視覺中心對齊中文字的
+              // x=878，而不是只對齊字寬的幾何中心。
+              ctx.font = FONT;
+              ctx.textAlign = "center";
+              const dm = ctx.measureText(u.text!);
+              const inkOffset = ((dm.actualBoundingBoxLeft || 0) - (dm.actualBoundingBoxRight || 0)) / 2;
+              drawStrokedText(ctx, u.text!, 878 + inkOffset, y, {
                 font: FONT,
                 fill: u.fill,
                 stroke: "#401c80",
