@@ -2,6 +2,7 @@ import { useState, type RefObject } from "react";
 import { useEditorStore } from "../store/editorStore";
 import type { DecorationLayerHandle } from "./DecorationLayer";
 import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
+import { getTemplateById } from "../templates/templates";
 
 // 貼上工單「說明」欄位的原始文字，自動解析成版型 + 欄位值 + 裝飾色塊。
 // 支援的區塊標記（跟發單習慣一致）：
@@ -505,7 +506,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
           <div>
             判斷版型：
             {preview.templateId ? (
-              <strong>{preview.templateId}</strong>
+              <strong>{getTemplateById(preview.templateId)?.name ?? preview.templateId}</strong>
             ) : (
               <span style={{ color: "#c0000a" }}>
                 無法辨識版型，請確認第一段有寫「紅／紫／藍／綠」「人物框大字」「圓框大字」或「箭頭框大字」
