@@ -27,10 +27,23 @@ import { BADGE_SHAPE_LABELS, type BadgeShape } from "../lib/badges";
 //   色塊=                                  → 每行「形狀:文字」，自動生成裝飾色塊（位置/顏色不固定，
 //                                            所以只負責生成內容，位置給預設值，套用後自己拖到對的地方）
 //   (SOU:...) / (SOU=...)                  → 純備註，會被忽略，不會填進任何欄位
+//   {...}                                  → 純備註（例如「{這塊字最大}」這種字級提示），會被忽略，
+//                                            不會填進任何欄位，也不會出現在「未解析」清單裡
 //
-// 目前支援紅／紫／藍／綠這四個「緞帶框」版型（欄位結構一致：tag / title1 / title2）
-// 跟「人物框大字」（欄位結構：title / sub / eyebrow / eyebrowBig）。如果之後要支援
-// 「圓框大字」等其他版型，欄位名稱不同，需要另外擴充下面的解析與 applyToFields()。
+//   圓框大字專用（欄位結構：banner / title1 / title2 / tagSmall / note，跟緞帶框共用
+//   title1／title2 這兩個欄位名稱，所以下面 applyToFields() 不用另外特殊處理）：
+//   主標兩行上=                            → 標題第一行（title1），內容接在下一行
+//   主標兩行下=                            → 標題第二行（title2），內容接在下一行
+//   主標上小字=                            → 頂部公告文字（banner），內容接在下一行
+//   兩行小標上=                            → 左下小標籤（tagSmall），內容接在下一行；
+//                                            發單習慣有時會寫成「兩行小標上=-」（多一個「-」），
+//                                            解析時會自動忽略這個「-」
+//   兩行小標下=                            → 補充說明（note），內容接在下一行
+//
+// 目前支援紅／紫／藍／綠這四個「緞帶框」版型（欄位結構一致：tag / title1 / title2）、
+// 「人物框大字」（欄位結構：title / sub / eyebrow / eyebrowBig）跟「圓框大字」
+// （欄位結構：banner / title1 / title2 / tagSmall / note）。如果之後要支援其他版型，
+// 欄位名稱不同，需要另外擴充下面的解析與 applyToFields()。
 
 const COLOR_TO_TEMPLATE: Record<string, string> = {
   紅: "red-frame",
@@ -43,9 +56,10 @@ const COLOR_TO_TEMPLATE: Record<string, string> = {
   綠色: "green-frame",
 };
 
-// 沒有顏色前綴、用完整版型名稱判斷的版型（目前只有「人物框大字」）。
+// 沒有顏色前綴、用完整版型名稱判斷的版型（目前是「人物框大字」跟「圓框大字」）。
 const NAME_TO_TEMPLATE: Record<string, string> = {
   人物框大字: "person-frame-big",
+  圓框大字: "circle-big",
 };
 
 // 色塊行的形狀關鍵字（跟 badges.ts 的 BADGE_SHAPE_LABELS 對應），
@@ -81,16 +95,22 @@ interface ParsedTicket {
   warn: string | null;
   badges: ParsedBadge[];
   ignoredLines: string[];
-  // 人物框大字專用欄位（緞帶框用不到，維持 null 就好）：
+  // 人物框大字專用欄位（緞帶框、圓框大字用不到，維持 null 就好）：
   title: string | null;
   sub: string | null;
   eyebrow: string | null;
   eyebrowBig: string | null;
+  // 圓框大字專用欄位（緞帶框、人物框大字用不到，維持 null 就好；title1/title2 跟緞帶框共用同一個欄位）：
+  banner: string | null;
+  tagSmall: string | null;
+  note: string | null;
 }
 
-// 判斷一行是不是「區塊標記」的開頭（主標=／小標=／左上=／警語=／打卡=／色塊=／(SOU:.../(SOU=...)），
+// 判斷一行是不是「區塊標記」的開頭（主標=／小標=／左上=／警語=／打卡=／色塊=／(SOU:.../(SOU=...)，
+// 以及圓框大字專用的 主標兩行上=／主標兩行下=／主標上小字=／兩行小標上=／兩行小標下=），
 // 用來在同一段落裡把黏在一起、中間沒空行分隔的區塊拆開（見下面 parseTicketText 的說明）。
-const MARKER_LINE_RE = /^(主標=|小標=|左上=|警語=|打卡=|色塊=|\(SOU[:=：])/i;
+const MARKER_LINE_RE =
+  /^(主標兩行上=|主標兩行下=|主標上小字=|兩行小標上=|兩行小標下=|主標=|小標=|左上=|警語=|打卡=|色塊=|\(SOU[:=：])/i;
 
 function parseTicketText(raw: string): ParsedTicket {
   // 先用空白行切成一段一段，但發單習慣不完全一致——有時候「人物框大字 框N 標題」這種
@@ -135,10 +155,18 @@ function parseTicketText(raw: string): ParsedTicket {
     sub: null,
     eyebrow: null,
     eyebrowBig: null,
+    banner: null,
+    tagSmall: null,
+    note: null,
   };
 
   // 一段是不是「另一個區塊標記」的開頭，用來判斷 主標= 該在哪裡停止往後併段落。
   const isKnownMarkerBlock = (b: string) =>
+    b.startsWith("主標兩行上=") ||
+    b.startsWith("主標兩行下=") ||
+    b.startsWith("主標上小字=") ||
+    b.startsWith("兩行小標上=") ||
+    b.startsWith("兩行小標下=") ||
     b.startsWith("主標=") ||
     b.startsWith("小標=") ||
     b.startsWith("左上=") ||
@@ -150,6 +178,41 @@ function parseTicketText(raw: string): ParsedTicket {
   let i = 0;
   while (i < blocks.length) {
     const block = blocks[i];
+
+    // 純字級/樣式提示備註，例如「{這塊字最大}」「{這塊字偏小}」，直接跳過不處理，
+    // 也不放進「未解析」清單（跟 (SOU:...) 備註的處理方式一致）。
+    if (/^\{.*\}$/.test(block)) {
+      i++;
+      continue;
+    }
+
+    // 圓框大字專用的五個標記：內容都是接在「標記=」下一行，取移除標記後剩下的文字就好
+    // （兩行小標上= 發單習慣有時候後面會多一個「-」，一併吃掉）。
+    if (block.startsWith("主標兩行上=")) {
+      result.title1 = block.replace(/^主標兩行上=-?\s*/, "").trim() || null;
+      i++;
+      continue;
+    }
+    if (block.startsWith("主標兩行下=")) {
+      result.title2 = block.replace(/^主標兩行下=-?\s*/, "").trim() || null;
+      i++;
+      continue;
+    }
+    if (block.startsWith("主標上小字=")) {
+      result.banner = block.replace(/^主標上小字=-?\s*/, "").trim() || null;
+      i++;
+      continue;
+    }
+    if (block.startsWith("兩行小標上=")) {
+      result.tagSmall = block.replace(/^兩行小標上=-?\s*/, "").trim() || null;
+      i++;
+      continue;
+    }
+    if (block.startsWith("兩行小標下=")) {
+      result.note = block.replace(/^兩行小標下=-?\s*/, "").trim() || null;
+      i++;
+      continue;
+    }
 
     if (block.startsWith("主標=")) {
       // 主標= 底下可能因為「(文字)----主標小色塊字」那行後面留了空白行，
@@ -335,6 +398,11 @@ export default function TicketImportPanel({ decorationRef }: Props) {
     if (preview.sub !== null) setField("sub", preview.sub);
     if (preview.eyebrow !== null) setField("eyebrow", preview.eyebrow);
     if (preview.eyebrowBig !== null) setField("eyebrowBig", preview.eyebrowBig);
+    // 圓框大字專用欄位（緞帶框、人物框大字的 preview.banner/tagSmall/note 都會是 null，
+    // 不會誤設到其他版型的欄位上）。
+    if (preview.banner !== null) setField("banner", preview.banner);
+    if (preview.tagSmall !== null) setField("tagSmall", preview.tagSmall);
+    if (preview.note !== null) setField("note", preview.note);
     // 版型裡 warn 欄位預設會帶一句提示文字（例如「違法行為 請勿模仿」），
     // 如果這次工單沒有寫「警語=」，要主動清空，不然畫面會殘留預設警語小字。
     setField("warn", preview.warn ?? "");
@@ -370,10 +438,11 @@ export default function TicketImportPanel({ decorationRef }: Props) {
       <div className="section-title">貼上工單文字自動生成</div>
       <div className="hint" style={{ marginBottom: 8 }}>
         直接貼上「說明」欄位的完整內容（含 主標= / 小標= / 打卡= / 色塊= 等區塊，人物框大字
-        還多支援 左上= 兩行），按「解析」預覽拆解結果，確認沒問題再按「套用」寫入版型、欄位與
-        裝飾色塊。緞帶框（紅／紫／藍／綠）主標=第一行如果是「(文字)----主標小色塊字」，會自動
-        拆成一個放在主標上方的裝飾色塊；這時如果同時有 打卡= 地點，地點標會自動上移到左上角
-        （紅色人物框02.psd 的規範，避免被色塊字擋到）。
+        還多支援 左上= 兩行；圓框大字改用 主標兩行上= / 主標兩行下= / 主標上小字= /
+        兩行小標上= / 兩行小標下= 這五個標記），按「解析」預覽拆解結果，確認沒問題再按
+        「套用」寫入版型、欄位與裝飾色塊。緞帶框（紅／紫／藍／綠）主標=第一行如果是
+        「(文字)----主標小色塊字」，會自動拆成一個放在主標上方的裝飾色塊；這時如果同時有
+        打卡= 地點，地點標會自動上移到左上角（紅色人物框02.psd 的規範，避免被色塊字擋到）。
       </div>
       <textarea
         rows={12}
@@ -400,7 +469,7 @@ export default function TicketImportPanel({ decorationRef }: Props) {
               <strong>{preview.templateId}</strong>
             ) : (
               <span style={{ color: "#c0000a" }}>
-                無法辨識版型，請確認第一段有寫「紅／紫／藍／綠」或「人物框大字」
+                無法辨識版型，請確認第一段有寫「紅／紫／藍／綠」「人物框大字」或「圓框大字」
               </span>
             )}
             {preview.frameNumber && <span>（框{preview.frameNumber}，目前僅供參考，尚未對應多款式）</span>}
@@ -411,6 +480,14 @@ export default function TicketImportPanel({ decorationRef }: Props) {
               <div>下方說明文字：{preview.sub ?? <em>（未偵測到）</em>}</div>
               <div>眉批小字：{preview.eyebrow ?? <em>（未偵測到）</em>}</div>
               <div>眉批大字：{preview.eyebrowBig ?? <em>（未偵測到）</em>}</div>
+            </>
+          ) : preview.templateId === "circle-big" ? (
+            <>
+              <div>頂部公告文字：{preview.banner ?? <em>（未偵測到）</em>}</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>標題第一行：{preview.title1 ?? <em>（未偵測到）</em>}</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>標題第二行：{preview.title2 ?? <em>（未偵測到）</em>}</div>
+              <div>左下小標籤：{preview.tagSmall ?? <em>（未偵測到）</em>}</div>
+              <div>補充說明：{preview.note ?? <em>（未偵測到）</em>}</div>
             </>
           ) : (
             <>
