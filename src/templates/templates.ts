@@ -424,7 +424,7 @@ export const TEMPLATES: TemplateDef[] = [
         name: "眉批裝飾線＋小字",
         draw: (ctx) => {
           const EYEBROW_RIGHT_X = 220,
-            EYEBROW_BASELINE_Y = 68;
+            EYEBROW_BASELINE_Y = 66;
           const EYEBROW_FONT = "700 32.7px 'DFLiHei', sans-serif";
           const LINE_LEFT_X = 0,
             LINE_GAP = 14,
@@ -477,7 +477,7 @@ export const TEMPLATES: TemplateDef[] = [
           // drawStrokedTextSegments 自己的 maxWidth 壓縮邏輯還是會擋住，不會真的爆版）。
           // 高度再 +10%：0.99*1.1=1.089
           const dynHScale = fitHScale * 1.1;
-          drawStrokedTextSegments(ctx, segs, EYEBROW_BIG_X, 124, {
+          drawStrokedTextSegments(ctx, segs, EYEBROW_BIG_X, 122, {
             font: FONT,
             align: "left",
             hScale: dynHScale,
