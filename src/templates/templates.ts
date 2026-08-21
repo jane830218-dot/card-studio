@@ -594,7 +594,7 @@ export const TEMPLATES: TemplateDef[] = [
     name: "圓框大字",
     thumbImg: "circle",
     fields: [
-      { key: "banner", label: "頂部公告文字", default: "主題確定兩年半發行" },
+      { key: "banner", label: "頂部公告文字（() 內紅色強調）", default: "主題確定兩年半發行" },
       { key: "title1", label: "標題第一行（() 內黃色強調）", default: "(新台幣)改版" },
       { key: "title2", label: "標題第二行（() 內藍色強調）", default: "(鈔票)要換了" },
       { key: "tagSmall", label: "左下小標籤（() 內黃色強調）", default: "兌現(12強冠軍)鈔？" },
@@ -604,12 +604,15 @@ export const TEMPLATES: TemplateDef[] = [
       whiteBgLayer(),
       frameLayer("circle"),
       {
+        // 補上 () 紅色強調（PSD 用色盤量出來是 c50000，跟「補充說明」共用同一個紅），
+        // 原本直接用 drawStrokedText 畫整串純色字，改成跟其他欄位一樣先 parseColorMarkup
+        // 拆成分段、再用 drawStrokedTextSegments 畫（支援同一組 align/hScale/vScale/maxWidth 參數）。
         name: "頂部公告文字",
         draw: (ctx) => {
           const BASELINE_Y = 137 - 1.875;
-          drawStrokedText(ctx, (fields.banner as string) || "主題確定兩年半發行", 723, BASELINE_Y, {
+          const segs = parseColorMarkup((fields.banner as string) || "主題確定兩年半發行", "#4a4e5d", "#c50000");
+          drawStrokedTextSegments(ctx, segs, 723, BASELINE_Y, {
             font: "900 43.14px 'DFLiHeiBdP', sans-serif",
-            fill: "#4a4e5d",
             stroke: "#ffffff",
             strokeWidth: 5,
             align: "center",
