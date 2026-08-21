@@ -433,13 +433,16 @@ export const TEMPLATES: TemplateDef[] = [
           const EYEBROW_BIG_X_MATCH = 45.5;
           const EYEBROW_MAXWIDTH = EYEBROW_RIGHT_X - EYEBROW_BIG_X_MATCH;
           const EYEBROW_LETTER_SPACING = 2;
+          // 每個字高度 -10%、寬度 +10%：vScale 1.1*0.9=0.99、hScale 0.9*1.1=0.99
+          const EYEBROW_HSCALE = 0.99;
+          const EYEBROW_VSCALE = 0.99;
           const text = (fields.eyebrow as string) || "還有";
           const textW = measureSingleRenderedWidth(
             ctx,
             text,
             EYEBROW_FONT,
             EYEBROW_LETTER_SPACING,
-            0.9,
+            EYEBROW_HSCALE,
             EYEBROW_MAXWIDTH
           );
           const lineRightX = EYEBROW_RIGHT_X - textW - LINE_GAP;
@@ -450,8 +453,8 @@ export const TEMPLATES: TemplateDef[] = [
             fill: "#ffffff",
             align: "right",
             letterSpacing: EYEBROW_LETTER_SPACING,
-            hScale: 0.9,
-            vScale: 1.1,
+            hScale: EYEBROW_HSCALE,
+            vScale: EYEBROW_VSCALE,
             maxWidth: EYEBROW_MAXWIDTH,
             dropShadow: { color: "rgba(0,0,0,0.57)", blur: 3, offsetX: 3, offsetY: 3 },
           });
@@ -469,12 +472,16 @@ export const TEMPLATES: TemplateDef[] = [
           const FONT = "900 48.31px 'DFHeiUB', sans-serif";
           const segs = parseColorMarkup((fields.eyebrowBig as string) || "調電眼(心碎)", "#ffffff", "#fff000");
           const naturalWidth = measureRenderedWidth(ctx, segs, FONT, 0, null);
-          const dynHScale = naturalWidth > 0 ? Math.min(TARGET_WIDTH / naturalWidth, MAX_HSCALE) : 1;
+          const fitHScale = naturalWidth > 0 ? Math.min(TARGET_WIDTH / naturalWidth, MAX_HSCALE) : 1;
+          // 每個字高度 -10%、寬度 +10%：vScale 1.1*0.9=0.99，hScale 在原本自動縮放的
+          // 結果上再乘 1.1（超出 TARGET_WIDTH 時，drawStrokedTextSegments 自己的
+          // maxWidth 壓縮邏輯還是會擋住，不會真的爆版）。
+          const dynHScale = fitHScale * 1.1;
           drawStrokedTextSegments(ctx, segs, EYEBROW_BIG_X, 124, {
             font: FONT,
             align: "left",
             hScale: dynHScale,
-            vScale: 1.1,
+            vScale: 0.99,
             maxWidth: TARGET_WIDTH,
             dropShadow: { color: "rgba(0,0,0,0.57)", blur: 3, offsetX: 3, offsetY: 3 },
           });
