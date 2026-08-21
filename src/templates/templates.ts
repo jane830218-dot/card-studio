@@ -791,6 +791,15 @@ export const TEMPLATES: TemplateDef[] = [
           const fontSizeHalf = Math.min(MAX_FONT, BOX_H / (N * VSCALE));
           const STEP = fontSizeHalf * VSCALE;
           const FONT = `900 ${fontSizeHalf}px 'MStiffHeiHK', sans-serif`;
+          // 寬度 1.5 倍：只加寬中文字（原本沒設 hScale，預設1，改成 1.5），
+          // 英數字維持原本的 0.68，不跟著放大（英數字錨點本來就比較靠右側，
+          // 放大後會超出安全框，維持原寬度才不會超框）。
+          // 中文字實測 1.5 倍會超出右側色塊圖（量出來左邊界約 x=830）跟安全框右邊界
+          // （安全框.png 量出來約 x=920.5），錨點 x=878 置中，兩邊各自安全距離取較窄的
+          // 那邊（920.5-878=42.5），兩邊合起來 maxWidth=85，超過時用既有的自動壓縮機制
+          // （drawStrokedText 的 maxWidth 參數）壓回來，不會整批都固定 1.5 倍。
+          const CJK_HSCALE = 1.5;
+          const CJK_MAX_WIDTH = 85;
           const LATIN_FONT_HALF = 101.355,
             LATIN_HSCALE = 0.68,
             LATIN_VSCALE = 0.8;
@@ -824,6 +833,8 @@ export const TEMPLATES: TemplateDef[] = [
                 stroke: "#401c80",
                 strokeWidth: 6 / VSCALE,
                 align: "center",
+                hScale: CJK_HSCALE,
+                maxWidth: CJK_MAX_WIDTH,
                 vScale: VSCALE,
               });
               y += STEP;
